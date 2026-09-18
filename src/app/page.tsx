@@ -5,6 +5,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field
 import { Input } from "@/components/ui/input";
 import { sessionCodeSchema } from "@/features/open-play/schemas";
 import { ctaClass } from "@/features/open-play/styles";
+import { createClient } from "@/lib/supabase/server";
 
 async function go(formData: FormData) {
   "use server";
@@ -14,10 +15,21 @@ async function go(formData: FormData) {
 
 export default async function Home({ searchParams }: PageProps<"/">) {
   const invalid = (await searchParams).invalid;
+
+  // The QR poster points here permanently: send players to whichever session is live.
+  // A bad code entered by hand stays on this page so the error is visible.
+  if (!invalid) {
+    const { data, error } = await (await createClient()).rpc("get_active_session_code");
+    if (error) throw new Error(`get_active_session_code failed: ${error.message}`);
+    if (data) redirect(`/play/${data}`);
+  }
+
   return (
     <CenteredPage
       title="Badminton Queue"
-      description="Scan the QR code at the gym, or enter the session code."
+      description={
+        invalid ? "Enter the session code from the poster." : "No open play is running right now. If you have a session code, enter it below."
+      }
     >
       <form action={go}>
         <FieldGroup>
