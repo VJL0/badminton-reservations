@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CenteredPage } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,12 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             {invalid && <FieldError>Enter a valid session code.</FieldError>}
           </Field>
           <Button type="submit" className={ctaClass}>Join open play</Button>
+          <p className="text-center text-sm text-muted-foreground">
+            Staff?{" "}
+            <Link href="/admin/login" className="underline underline-offset-4 hover:text-foreground">
+              Sign in
+            </Link>
+          </p>
         </FieldGroup>
       </form>
     </CenteredPage>

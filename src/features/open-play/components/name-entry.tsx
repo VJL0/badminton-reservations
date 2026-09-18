@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -75,6 +76,12 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
           <Button type="submit" className={ctaClass} disabled={pending || !name.trim() || (captchaEnabled && !token)}>
             {pending ? "One sec…" : "Continue"}
           </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            Staff?{" "}
+            <Link href="/admin/login" className="underline underline-offset-4 hover:text-foreground">
+              Sign in
+            </Link>
+          </p>
         </FieldGroup>
       </form>
     </CenteredPage>
