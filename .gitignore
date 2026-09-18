@@ -42,3 +42,6 @@ next-env.d.ts
 
 /supabase/.branches
 /supabase/.temp
+
+# example env file is documentation, not a secret
+!.env.example
