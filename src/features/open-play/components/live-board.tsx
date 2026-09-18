@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { setCourtPaused } from "../actions/court-status";
 import { finishRound } from "../actions/finish-round";
+import { joinCourt } from "../actions/join-court";
 import { joinQueue } from "../actions/join-queue";
 import { leaveQueue } from "../actions/leave-queue";
 import { removePlayer } from "../actions/remove-player";
@@ -90,6 +91,8 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
               now={now}
               durationSeconds={session.game_duration_seconds}
               busy={pending}
+              canPick={me.state === "IDLE" && session.status === "ACTIVE"}
+              onJoin={(courtId) => run(() => joinCourt(courtId))}
               onFinish={(roundId) => run(() => finishRound(roundId))}
               onTogglePause={(c: Court) => run(() => setCourtPaused(c.id, c.status === "OPEN"))}
               onRemove={(playerId) => run(() => removePlayer(session.id, playerId))}

@@ -10,6 +10,8 @@ const MESSAGES: Record<string, string> = {
   not_allowed: "Only the players on this court or an officer can end the game.",
   game_in_progress: "That game is in progress. Ask an officer to end it.",
   session_ended: "This session has ended.",
+  court_unavailable: "That court just filled up or was paused. Pick another.",
+  court_not_found: "Court not found.",
   session_not_found: "Session not found.",
   round_not_active: "That game isn't running.",
   invalid_name: "Enter a name between 1 and 40 characters.",
