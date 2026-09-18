@@ -13,6 +13,7 @@ import { useNow } from "../hooks/use-now";
 import { useSessionRealtime } from "../hooks/use-session-realtime";
 import type { Court, Snapshot } from "../types";
 import { CourtCard } from "./court-card";
+import { QrButton } from "./qr-button";
 import { PlayerStatus } from "./player-status";
 import { Queue } from "./queue";
 import { ShuttleIcon } from "./shuttle-icon";
@@ -46,7 +47,8 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
             <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-2 lg:text-xs lg:tracking-[0.14em]">Open play · {session.code}</p>
           </div>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 lg:gap-6">
+          {session.status === "ACTIVE" && <QrButton code={session.code} size={36} />}
           <span className="flex items-center gap-2 font-mono text-[11px] font-medium tracking-[0.14em] text-mat lg:text-xs">
             <i className={`live-dot size-2 rounded-full ${connected ? "bg-mat" : "bg-cork"}`} />
             {connected ? "LIVE" : "RECONNECTING"}
