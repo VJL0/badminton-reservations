@@ -14,3 +14,11 @@ export const createSessionSchema = z.object({
   minutes: z.coerce.number().int().min(1).max(180),
   autoRequeue: z.boolean(),
 });
+
+export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Enter a valid email"));
+export const passwordSchema = z
+  .string()
+  .min(10, "Use at least 10 characters")
+  .regex(/[a-z]/, "Include a lowercase letter")
+  .regex(/[A-Z]/, "Include an uppercase letter")
+  .regex(/[0-9]/, "Include a digit");
