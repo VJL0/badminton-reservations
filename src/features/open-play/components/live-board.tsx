@@ -14,6 +14,7 @@ import { useNow } from "../hooks/use-now";
 import { useSessionRealtime } from "../hooks/use-session-realtime";
 import type { Court, Snapshot } from "../types";
 import { CourtCard } from "./court-card";
+import { StaffMenu } from "./staff-menu";
 import { QrButton } from "./qr-button";
 import { PlayerStatus } from "./player-status";
 import { Queue } from "./queue";
@@ -54,10 +55,14 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
             <i className={`live-dot size-2 rounded-full ${connected ? "bg-mat" : "bg-cork"}`} />
             {connected ? "LIVE" : "RECONNECTING"}
           </span>
-          <div className="hidden flex-col items-end gap-0.5 lg:flex">
-            <span className="text-base font-bold">{me.display_name}</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">{me.role ? me.role.toLowerCase() : "player"}</span>
-          </div>
+          {me.role ? (
+            <StaffMenu name={me.display_name} role={me.role} />
+          ) : (
+            <div className="hidden flex-col items-end gap-0.5 lg:flex">
+              <span className="text-base font-bold">{me.display_name}</span>
+              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">player</span>
+            </div>
+          )}
         </div>
       </header>
 
