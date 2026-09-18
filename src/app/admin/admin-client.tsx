@@ -1,6 +1,5 @@
 "use client";
 
-import { QRCodeSVG } from "qrcode.react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -9,14 +8,12 @@ import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { createSession, endSession } from "@/features/open-play/actions/admin";
+import { QrButton } from "@/features/open-play/components/qr-button";
+import { addAdmin, changeMyPassword, resetAdminPassword } from "@/features/open-play/actions/staff";
 import { ConfirmButton } from "@/features/open-play/components/confirm-button";
 
-export function SessionQr({ url }: { url: string }) {
-  return (
-    <div className="rounded-xl bg-white p-2">
-      <QRCodeSVG value={url} size={88} />
-    </div>
-  );
+export function SessionQr({ url, code }: { url: string; code: string }) {
+  return <QrButton url={url} code={code} />;
 }
 
 export function EndSessionButton({ sessionId }: { sessionId: string }) {
@@ -91,6 +88,109 @@ export function CreateSessionForm() {
           </Alert>
         )}
         <Button type="submit" disabled={pending} className="w-fit">Create session</Button>
+      </FieldGroup>
+    </form>
+  );
+}
+
+export function AddAdminForm() {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const email = String(new FormData(form).get("email"));
+        startTransition(async () => {
+          const res = await addAdmin(email);
+          if (res.ok) {
+            form.reset();
+            setError(null);
+            router.refresh();
+          } else setError(res.error);
+        });
+      }}
+    >
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="admin-email">Email</FieldLabel>
+          <Input id="admin-email" name="email" type="email" required autoComplete="off" placeholder="new.admin@example.com" />
+          <p className="text-xs text-muted-foreground">
+            They sign in with this email and the default password, and are asked to change it right away.
+          </p>
+        </Field>
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+        <Button type="submit" disabled={pending} className="w-fit">Add admin</Button>
+      </FieldGroup>
+    </form>
+  );
+}
+
+export function ResetPasswordButton({ userId }: { userId: string }) {
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <ConfirmButton
+        label="Reset password"
+        confirmLabel="Confirm reset"
+        disabled={pending}
+        onConfirm={() =>
+          startTransition(async () => {
+            const res = await resetAdminPassword(userId);
+            setMessage(res.ok ? { ok: true, text: "Reset to the default password." } : { ok: false, text: res.error });
+          })
+        }
+      />
+      {message && (
+        <p role={message.ok ? "status" : "alert"} className={message.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive"}>
+          {message.text}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function ChangePasswordForm() {
+  const router = useRouter();
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const form = e.currentTarget;
+        const password = String(new FormData(form).get("password"));
+        startTransition(async () => {
+          const res = await changeMyPassword(password);
+          if (res.ok) {
+            form.reset();
+            setMessage({ ok: true, text: "Password changed." });
+            router.refresh();
+          } else setMessage({ ok: false, text: res.error });
+        });
+      }}
+    >
+      <FieldGroup>
+        <Field>
+          <FieldLabel htmlFor="new-password">New password</FieldLabel>
+          <Input id="new-password" name="password" type="password" required autoComplete="new-password" minLength={10} />
+          <p className="text-xs text-muted-foreground">At least 10 characters with upper case, lower case and a digit.</p>
+        </Field>
+        {message && (
+          <Alert variant={message.ok ? "default" : "destructive"}>
+            <AlertDescription>{message.text}</AlertDescription>
+          </Alert>
+        )}
+        <Button type="submit" disabled={pending} className="w-fit">Change password</Button>
       </FieldGroup>
     </form>
   );

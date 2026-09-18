@@ -44,6 +44,11 @@ insert into public.staff (user_id, role)
 select id, 'ADMIN' from auth.users where email = 'you@example.com';
 ```
 
+Once one admin exists, more can be added from the **Admins** section of `/admin` (email only; the
+password starts as the shared default and the new admin is made to change it). This needs the
+server-only `SUPABASE_SERVICE_ROLE_KEY` (see `.env.example`); set it in Vercel too, **without** the
+`NEXT_PUBLIC_` prefix. Admins can also reset another admin's password to the default there.
+
 ## Scripts
 
 | Script | What it does |
