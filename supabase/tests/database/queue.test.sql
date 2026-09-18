@@ -1,5 +1,5 @@
 begin;
-select plan(34);
+select plan(41);
 
 create schema tests;
 -- Run SQL as an authenticated user, then hand the role back (so pgTAP itself
@@ -138,6 +138,33 @@ select is((select state::text from public.session_players where player_id = test
 select throws_ok(format('select tests.join(tests.uid(5), %L)', (select id from t_k)), 'too_fast', 'instant leave/join churn is throttled');
 select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 7,
           'every table has an explicit deny policy');
+
+-- ---------- choosing a court
+select tests.call(tests.uid(100), $$select public.create_session('Pick', 3, 600, 'PICK')$$);
+create temp table t_pk as select id from public.open_play_sessions where code = 'PICK';
+create temp table t_pkc as select id, court_number from public.courts where session_id = (select id from t_pk);
+select tests.call(tests.uid(1), format('select public.join_court(%L)', (select id from t_pkc where court_number = 3)));
+select is((select c.court_number from public.round_players rp join public.rounds r on r.id = rp.round_id
+            join public.courts c on c.id = r.court_id where rp.player_id = tests.uid(1) and rp.left_at is null and r.session_id = (select id from t_pk)), 3,
+          'a player can pick court 3 instead of the packed court 1');
+select is((select state::text from public.session_players where player_id = tests.uid(1) and session_id = (select id from t_pk)), 'PLAYING',
+          'picking a court puts the player in play');
+select tests.call(tests.uid(1), format('select public.join_court(%L)', (select id from t_pkc where court_number = 1)));
+select is((select count(*)::int from public.round_players rp join public.rounds r on r.id = rp.round_id
+            where rp.player_id = tests.uid(1) and rp.left_at is null and r.session_id = (select id from t_pk)), 1,
+          'picking again while placed is a no-op');
+select tests.call(tests.uid(n), format('select public.join_court(%L)', (select id from t_pkc where court_number = 3))) from generate_series(2, 4) n;
+select ok((select ends_at - started_at = interval '10 minutes' from public.rounds r join public.courts c on c.id = r.court_id
+            where c.court_number = 3 and c.session_id = (select id from t_pk) and r.status = 'ACTIVE'),
+          'the 4th player to pick a court starts its timer');
+select tests.call(tests.uid(5), $$select public.set_display_name('P5')$$);
+select throws_ok(format('select tests.call(tests.uid(5), %L)', format('select public.join_court(%L)', (select id from t_pkc where court_number = 3))),
+  'court_unavailable', 'cannot pick a court that is in play');
+select tests.call(tests.uid(100), format('select public.pause_court(%L)', (select id from t_pkc where court_number = 1)));
+select throws_ok(format('select tests.call(tests.uid(5), %L)', format('select public.join_court(%L)', (select id from t_pkc where court_number = 1))),
+  'court_unavailable', 'cannot pick a paused court');
+select throws_ok(format('select tests.call(tests.uid(5), %L)', 'select public.join_court(gen_random_uuid())'),
+  'court_not_found', 'unknown court');
 
 -- ---------- ending a session
 select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_s)));

@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Court, Snapshot } from "../types";
 import { ConfirmButton } from "./confirm-button";
@@ -11,6 +12,8 @@ type Props = {
   now: number;
   durationSeconds: number;
   busy: boolean;
+  canPick: boolean;
+  onJoin: (courtId: string) => void;
   onFinish: (roundId: string) => void;
   onTogglePause: (court: Court) => void;
   onRemove: (playerId: string) => void;
@@ -23,7 +26,7 @@ const CHIP: Record<string, string> = {
   open: "border-sage bg-transparent text-sage",
 };
 
-export function CourtCard({ court, me, now, durationSeconds, busy, onFinish, onTogglePause, onRemove }: Props) {
+export function CourtCard({ court, me, now, durationSeconds, busy, canPick, onJoin, onFinish, onTogglePause, onRemove }: Props) {
   const round = court.round;
   const players = round?.players ?? [];
   const isStaff = me.role !== null;
@@ -31,6 +34,8 @@ export function CourtCard({ court, me, now, durationSeconds, busy, onFinish, onT
   const active = round?.status === "ACTIVE" && !!round.ends_at;
   const timeUp = active && Date.parse(round!.ends_at!) - now <= 0;
   const canEnd = active && (isStaff || mine);
+  // Room to pick: open court, no game running, fewer than four standing on it.
+  const hasRoom = court.status === "OPEN" && round?.status !== "ACTIVE" && players.length < 4;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
 
   const paused = court.status === "PAUSED";
@@ -81,6 +86,15 @@ export function CourtCard({ court, me, now, durationSeconds, busy, onFinish, onT
 
       <div className="flex min-h-0 flex-col gap-3 lg:min-h-[64px]">
         <p className="text-sm leading-snug text-sage">{meta}</p>
+        {canPick && hasRoom && (
+          <Button
+            className="h-12 rounded-2xl bg-signal text-[15px] font-semibold text-white hover:bg-signal/90"
+            disabled={busy}
+            onClick={() => onJoin(court.id)}
+          >
+            Join court {court.court_number}
+          </Button>
+        )}
         {(canEnd || isStaff) && (
           <div className="flex gap-2">
             {canEnd && round && (
