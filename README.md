@@ -69,7 +69,10 @@ server-only `SUPABASE_SERVICE_ROLE_KEY` (see `.env.example`); set it in Vercel t
 | `pnpm db:lint` | `plpgsql_check` over every database function (unused variables, wrong volatility, bad SQL); fails on warnings |
 | `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from the schema. Run after changing a migration; CI fails if it is stale |
 
-CI (`.github/workflows/ci.yml`) runs all of these.
+CI (`.github/workflows/ci.yml`) runs all of these. Around it: CodeQL code scanning, a dependency review on every PR
+(blocks new high-severity vulnerabilities), a lint of the workflows themselves (zizmor + actionlint), and Dependabot for
+GitHub Actions and npm. Every action is pinned to a full commit SHA and every job runs with read-only permissions;
+Dependabot keeps the pins current.
 
 ## Deploying
 
