@@ -37,3 +37,7 @@ jobs:
       - run: pnpm db:test
       - run: pnpm db:concurrency
       - run: pnpm db:advisors
+      - run: pnpm db:lint
+      # The TypeScript types are generated from the schema: fail if someone changed a migration but not the types.
+      - run: pnpm db:types
+      - run: git diff --exit-code src/lib/supabase/database.types.ts

@@ -57,6 +57,8 @@ server-only `SUPABASE_SERVICE_ROLE_KEY` (see `.env.example`); set it in Vercel t
 | `pnpm db:test` | pgTAP: allocator, timer, RLS/grants, abuse limits |
 | `pnpm db:concurrency` | 20 simultaneous joins / 5 simultaneous End Game (cleans up after itself) |
 | `pnpm db:advisors` | Supabase security + performance linter; fails on warnings |
+| `pnpm db:lint` | `plpgsql_check` over every database function (unused variables, wrong volatility, bad SQL); fails on warnings |
+| `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from the schema. Run after changing a migration; CI fails if it is stale |
 
 CI (`.github/workflows/ci.yml`) runs all of these.
 
@@ -115,9 +117,8 @@ Skipped by default; the app works without it, and the sound/vibration alert on t
    and a long random `PUSH_WEBHOOK_SECRET` in Vercel (plus `SUPABASE_SERVICE_ROLE_KEY`, already needed for admins). Redeploy.
 2. Tell the database where to call, in the Supabase SQL editor (same secret as above):
    ```sql
-   insert into public.push_config (key, value) values
-     ('url', 'https://<your-domain>/api/push'), ('secret', '<PUSH_WEBHOOK_SECRET>')
-   on conflict (key) do update set value = excluded.value;
+   select vault.create_secret('https://<your-domain>/api/push', 'push_url');
+   select vault.create_secret('<PUSH_WEBHOOK_SECRET>', 'push_secret');
    ```
 3. iPhones only allow web push for an app added to the Home Screen (iOS 16.4+): Share, then Add to Home Screen.
 

@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { env } from "@/lib/env";
+import type { Database } from "./database.types";
 
 /**
  * Keeps the Supabase auth cookies fresh. `requestHeaders` already carries the CSP nonce, so every
@@ -8,7 +9,7 @@ import { env } from "@/lib/env";
  */
 export async function updateSession(request: NextRequest, requestHeaders: Headers) {
   let response = NextResponse.next({ request: { headers: requestHeaders } });
-  const supabase = createServerClient(env.SUPABASE_URL, env.SUPABASE_KEY, {
+  const supabase = createServerClient<Database>(env.SUPABASE_URL, env.SUPABASE_KEY, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(list) {
