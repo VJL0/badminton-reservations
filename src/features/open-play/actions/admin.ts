@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { createSessionSchema, idSchema } from "../schemas";
+import { createSessionSchema, firstIssue, idSchema } from "../schemas";
 import type { FormState } from "./form-state";
 import { type ActionResult, callRpc, invalid } from "./rpc";
 
@@ -15,7 +15,7 @@ export async function signOut() {
 
 export async function createSession(input: { name: string; courts: number; minutes: number; autoRequeue: boolean }): Promise<ActionResult> {
   const p = createSessionSchema.safeParse(input);
-  if (!p.success) return { ok: false, error: p.error.issues[0].message };
+  if (!p.success) return { ok: false, error: firstIssue(p.error) };
   const res = await callRpc("create_session", {
     p_name: p.data.name,
     p_court_count: p.data.courts,

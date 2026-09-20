@@ -34,3 +34,6 @@ export const sessionSettingsSchema = z.object({
   autoFinish: z.boolean(),
   startDelaySeconds: z.coerce.number().int().min(0, "The countdown can't be negative").max(300, "The countdown is at most 300 seconds"),
 });
+
+/** The message to show for a failed parse. `issues[0]` is not guaranteed to exist as far as the type system knows. */
+export const firstIssue = (error: z.ZodError) => error.issues[0]?.message ?? "That doesn't look right.";

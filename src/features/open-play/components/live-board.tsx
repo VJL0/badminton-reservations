@@ -65,6 +65,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         if (Date.now() - (reported.current.get(key) ?? 0) < 4500) continue; // already reported: give it a moment
         reported.current.set(key, Date.now());
         const [kind, id] = key.split(":");
+        if (!id) continue;
         void (kind === "start" ? startRound(id) : finishRound(id)).then(() => refresh());
       }
     };

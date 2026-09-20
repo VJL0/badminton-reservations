@@ -22,12 +22,13 @@ type Props = {
   onRemove: (playerId: string) => void;
 };
 
-const CHIP: Record<string, string> = {
+const CHIP = {
   play: "bg-mat text-white",
   up: "bg-signal text-white",
   fill: "bg-cork text-cork-ink",
   open: "border-sage bg-transparent text-sage",
-};
+} as const satisfies Record<string, string>;
+type ChipTone = keyof typeof CHIP;
 
 export function CourtCard({
   court,
@@ -61,7 +62,7 @@ export function CourtCard({
   const hasRoom = round?.status !== "ACTIVE" && !full;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
 
-  const chip = ended
+  const chip: [ChipTone, string] = ended
     ? ["open", "Closed"]
     : timeUp
       ? ["up", "Time's up"]

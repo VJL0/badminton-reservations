@@ -3,7 +3,7 @@
 import { refresh } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { emailSchema, idSchema, passwordSchema } from "../schemas";
+import { emailSchema, firstIssue, idSchema, passwordSchema } from "../schemas";
 import type { FormState } from "./form-state";
 import { type ActionResult, invalid } from "./rpc";
 
@@ -28,7 +28,7 @@ const unconfigured: ActionResult = {
 
 export async function addAdmin(email: string): Promise<ActionResult> {
   const parsed = emailSchema.safeParse(email);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   if (!(await requireAdmin())) return denied;
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return unconfigured;
 
@@ -79,7 +79,7 @@ export async function resetAdminPassword(userId: string): Promise<ActionResult> 
 
 export async function changeMyPassword(password: string): Promise<ActionResult> {
   const parsed = passwordSchema.safeParse(password);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   if (parsed.data === DEFAULT_PASSWORD) return { ok: false, error: "Pick a password of your own." };
 
   const supabase = await createClient();

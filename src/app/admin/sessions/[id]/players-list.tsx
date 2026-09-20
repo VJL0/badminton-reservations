@@ -5,6 +5,9 @@ import { LocalTime } from "@/components/local-time";
 import { formatDuration } from "@/lib/format";
 import type { PlayerStat } from "./summary-types";
 
+type Sort = { label: string; cmp: (a: PlayerStat, b: PlayerStat) => number };
+
+// `satisfies` checks every entry has the right shape while keeping the exact keys ("games" | "longest" | ...) for the dropdown.
 const SORTS = {
   games: {
     label: "Games played",
@@ -26,7 +29,7 @@ const SORTS = {
     label: "Name",
     cmp: (a: PlayerStat, b: PlayerStat) => a.name.localeCompare(b.name),
   },
-} as const;
+} as const satisfies Record<string, Sort>;
 
 const PREVIEW = 8;
 const meta = "font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground";
