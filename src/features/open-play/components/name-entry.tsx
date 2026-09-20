@@ -66,7 +66,7 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
               autoComplete="name"
-              placeholder="Victor J."
+              placeholder="John Doe"
               aria-invalid={!!error}
               className="h-14 rounded-xl px-4 text-lg md:text-lg"
             />
