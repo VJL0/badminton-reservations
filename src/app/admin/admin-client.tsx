@@ -13,7 +13,7 @@ import { addAdmin, changeMyPassword, resetAdminPassword } from "@/features/open-
 import { ConfirmButton } from "@/features/open-play/components/confirm-button";
 
 export function SessionQr({ url, code }: { url: string; code: string }) {
-  return <QrButton url={url} code={code} />;
+  return <QrButton url={url} code={code} size={72} />;
 }
 
 export function EndSessionButton({ sessionId }: { sessionId: string }) {

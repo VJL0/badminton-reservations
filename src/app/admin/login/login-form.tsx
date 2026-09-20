@@ -11,7 +11,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const inputClass = "h-14 rounded-xl px-4 text-lg md:text-lg";
 
-export function LoginForm({ nonce }: { nonce?: string }) {
+export function LoginForm({ nonce, next = "/admin" }: { nonce?: string; next?: string }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +39,7 @@ export function LoginForm({ nonce }: { nonce?: string }) {
             setToken(undefined);
             return;
           }
-          router.replace("/admin");
+          router.replace(next); // already checked against the allow-list by the page
           router.refresh();
         });
       }}

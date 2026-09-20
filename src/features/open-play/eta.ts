@@ -1,26 +1,38 @@
-import { PLAYERS_PER_COURT, type Court, type Snapshot } from "./types";
+import { type Court, type Snapshot } from "./types";
 
-/** Courts (paused or not) that a newcomer would be placed on right now, best first. */
+type Round = NonNullable<Court["round"]>;
+
+/** Milliseconds left in a running game. A paused game's clock stands still at the moment it paused. */
+export function remainingMs(round: Round, now: number) {
+  const at = round.paused_at ? Date.parse(round.paused_at) : now;
+  return Date.parse(round.ends_at!) - at;
+}
+
+/** Courts a newcomer could be placed on right now, best (fullest) first. */
 export function openCourts(courts: Court[]) {
   return courts
-    .filter((c) => c.status === "OPEN" && (!c.round || (c.round.status === "FILLING" && c.round.players.length < PLAYERS_PER_COURT)))
+    .filter((c) => (!c.round || (c.round.status === "FILLING" && c.round.players.length < c.capacity)))
     .sort((a, b) => (b.round?.players.length ?? 0) - (a.round?.players.length ?? 0) || a.court_number - b.court_number);
 }
 
 /**
- * "When does batch b of four get a court?" Assumes games run their full length.
- * Each running court frees at ends_at, then every duration after that.
+ * "When does the person at queue index i get a court?" Assumes games run their full length.
+ * Each running court frees `capacity` places at its end time, and again every game length after that.
  */
 export function makeEta(snapshot: Snapshot, now: number) {
   const dur = snapshot.session.game_duration_seconds * 1000;
-  const events: { t: number; num: number }[] = [];
+  const places: { t: number; num: number }[] = [];
   for (const c of snapshot.courts) {
     if (c.round?.status !== "ACTIVE" || !c.round.ends_at) continue;
-    for (let r = 0; r < 4; r++) events.push({ t: Date.parse(c.round.ends_at) + r * dur, num: c.court_number });
+    // A paused game is pushed back by however long it has been stopped.
+    const endsAt = Date.parse(c.round.ends_at) + (c.round.paused_at ? now - Date.parse(c.round.paused_at) : 0);
+    for (let r = 0; r < 4; r++) {
+      for (let k = 0; k < c.capacity; k++) places.push({ t: endsAt + r * dur, num: c.court_number });
+    }
   }
-  events.sort((a, b) => a.t - b.t);
-  return (batch: number): string | null => {
-    const e = events[Math.min(batch, events.length - 1)];
+  places.sort((a, b) => a.t - b.t);
+  return (index: number): string | null => {
+    const e = places[Math.min(index, places.length - 1)];
     if (!e) return null;
     const wait = e.t - now;
     return wait <= 0

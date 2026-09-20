@@ -15,7 +15,9 @@ async function go(formData: FormData) {
 }
 
 export default async function Home({ searchParams }: PageProps<"/">) {
-  const invalid = (await searchParams).invalid;
+  const params = await searchParams;
+  const invalid = params.invalid;
+  const notFound = invalid === "notfound"; // a well-formed code that matches no session
 
   // The QR poster points here permanently: send players to whichever session is live.
   // A bad code entered by hand stays on this page so the error is visible.
@@ -29,7 +31,11 @@ export default async function Home({ searchParams }: PageProps<"/">) {
     <CenteredPage
       title="Badminton Queue"
       description={
-        invalid ? "Enter the session code from the poster." : "No open play is running right now. If you have a session code, enter it below."
+        notFound
+          ? "We couldn't find that session, and none is running right now. Check the code on the poster."
+          : invalid
+            ? "Enter the session code from the poster."
+            : "No open play is running right now. If you have a session code, enter it below."
       }
     >
       <form action={go}>
@@ -45,12 +51,12 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               aria-invalid={!!invalid}
               className="h-14 rounded-xl px-4 text-center text-xl font-bold uppercase tracking-widest md:text-xl"
             />
-            {invalid && <FieldError>Enter a valid session code.</FieldError>}
+            {invalid && <FieldError>{notFound ? "No session with that code." : "Enter a valid session code."}</FieldError>}
           </Field>
           <Button type="submit" className={ctaClass}>Join open play</Button>
           <p className="text-center text-sm text-muted-foreground">
             Staff?{" "}
-            <Link href="/admin/login" className="underline underline-offset-4 hover:text-foreground">
+            <Link href="/admin/login" className="inline-flex min-h-11 items-center px-2 underline underline-offset-4 hover:text-foreground">
               Sign in
             </Link>
           </p>
