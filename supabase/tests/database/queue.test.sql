@@ -1,5 +1,5 @@
 begin;
-select plan(106);
+select plan(110);
 
 create schema tests;
 -- Run SQL as an authenticated user, then hand the role back (so pgTAP itself
@@ -428,6 +428,17 @@ select is((select count(*)::int from public.session_players where session_id = (
 select throws_ok(format('select tests.join(tests.uid(1), %L)', (select id from t_s)), 'session_ended', 'cannot join an ended session');
 select ok((select count(*) from realtime.messages where event = 'session_changed' and topic = 'session:' || (select id from t_s)::text) > 0,
           'mutations broadcast session_changed');
+
+-- ---------- deleting a session
+create temp table t_del as select id from public.open_play_sessions where code = 'FRIDAY';
+select tests.call(tests.uid(100), $$select public.create_session('Doomed', 1, 1200, 'DOOMED')$$);
+create temp table t_doomed as select id from public.open_play_sessions where code = 'DOOMED';
+select throws_ok(format('select tests.call(tests.uid(100), $q$select public.delete_session(%L)$q$)', (select id from t_doomed)), 'session_active', 'a live session cannot be deleted');
+select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_doomed)));
+select throws_ok(format('select tests.call(tests.uid(101), $q$select public.delete_session(%L)$q$)', (select id from t_doomed)), 'not_staff', 'operators cannot delete sessions');
+select tests.call(tests.uid(100), format('select public.delete_session(%L)', (select id from t_doomed)));
+select is((select count(*)::int from public.open_play_sessions where code = 'DOOMED'), 0, 'an ended session can be deleted');
+select is((select count(*)::int from public.courts where session_id = (select id from t_doomed)), 0, 'its courts go with it');
 
 select * from finish();
 rollback;

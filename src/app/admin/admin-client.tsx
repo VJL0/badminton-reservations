@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { createSessionForm, endSession } from "@/features/open-play/actions/admin";
+import { createSessionForm, deleteSession, endSession } from "@/features/open-play/actions/admin";
 import type { FormState } from "@/features/open-play/actions/form-state";
 import { addAdminForm, changePasswordForm, resetAdminPassword } from "@/features/open-play/actions/staff";
 import { ConfirmButton } from "@/features/open-play/components/confirm-button";
@@ -26,6 +26,27 @@ export function EndSessionButton({ sessionId }: { sessionId: string }) {
         onConfirm={async () => {
           // The action refreshes the page itself (next/cache refresh), so the list updates in the same round trip.
           const res = await endSession(sessionId);
+          setError(res.ok ? null : res.error);
+        }}
+      />
+      {error && (
+        <p role="alert" className="text-xs text-destructive">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function DeleteSessionButton({ sessionId }: { sessionId: string }) {
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col items-end gap-1">
+      <ConfirmButton
+        label="Delete"
+        confirmLabel="Confirm delete"
+        onConfirm={async () => {
+          const res = await deleteSession(sessionId);
           setError(res.ok ? null : res.error);
         }}
       />

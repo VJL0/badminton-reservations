@@ -11,6 +11,7 @@ const MESSAGES: Record<string, string> = {
   not_allowed: "Only the players on this court or an officer can start or end the game.",
   game_in_progress: "A game is running on that court. Try again once it ends.",
   session_ended: "This session has ended.",
+  session_active: "End the session before deleting it.",
   last_court: "A session needs at least one court.",
   not_enough_players: "A game needs at least two players.",
   invalid_duration: "Games run between 1 and 180 minutes.",
