@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import type { ActionResult } from "../actions/rpc";
+import type { ActionResult } from "../actions/result";
 import { addCourt, deleteCourt, updateCourt, updateSessionSettings } from "../actions/session-config";
 import { formatLabel, type Snapshot } from "../types";
 import { ConfirmButton } from "./confirm-button";

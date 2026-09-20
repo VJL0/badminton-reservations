@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { deletePushSubscription, savePushSubscription, sendTestNotification } from "../actions/push";
+import { settle } from "../client/settle";
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
 
@@ -58,7 +59,7 @@ export function usePush() {
             });
           }
           set("on");
-          void savePushSubscription(sub.toJSON()); // re-claim it for whoever is signed in now
+          void savePushSubscription(sub.toJSON()).catch(() => {}); // re-claim it for whoever is signed in now; offline just skips it
         } else set("off");
       } catch {
         set("unsupported");
@@ -106,7 +107,7 @@ export function usePush() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await deletePushSubscription(sub.endpoint);
+        await deletePushSubscription(sub.endpoint).catch(() => {}); // the database forgets a dead endpoint on its own
         await sub.unsubscribe();
       }
       setState("off");
@@ -119,7 +120,7 @@ export function usePush() {
     setBusy(true);
     setError(null);
     try {
-      const res = await sendTestNotification();
+      const res = await settle(sendTestNotification);
       if (!res.ok) setError(res.error);
     } finally {
       setBusy(false);

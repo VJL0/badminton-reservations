@@ -50,7 +50,7 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
           >
             {Array.from({ length: QUEUE_ROW }, (_, k) => {
               const q = batch[k];
-              const isMe = q?.player_id === me.id;
+              const isMe = q?.participant_id === me.participant_id;
               return (
                 <li
                   // biome-ignore lint/suspicious/noArrayIndexKey: slot k of the row; empty slots have no id
@@ -81,7 +81,7 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
                       variant="ghost"
                       size="icon-sm"
                       className="text-ink-2 hover:bg-signal/15 hover:text-signal"
-                      onClick={() => onRemove(q.player_id)}
+                      onClick={() => onRemove(q.participant_id)}
                       aria-label={`Remove ${q.name}`}
                     >
                       <HugeiconsIcon icon={Cancel01Icon} />

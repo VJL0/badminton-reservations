@@ -11,7 +11,8 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set("Content-Security-Policy", csp);
 
   const { pathname } = request.nextUrl;
-  const needsSession = pathname.startsWith("/play") || pathname.startsWith("/admin");
+  // The home page too: while nothing is live it listens on a private (authenticated) channel for the session to start.
+  const needsSession = pathname === "/" || pathname.startsWith("/play") || pathname.startsWith("/admin");
   const response = needsSession
     ? await updateSession(request, requestHeaders)
     : NextResponse.next({ request: { headers: requestHeaders } });

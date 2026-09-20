@@ -8,11 +8,13 @@ import { CenteredPage } from "@/components/page-shell";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { createClient } from "@/lib/supabase/client";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 import { saveDisplayName } from "../actions/save-display-name";
+import { settle } from "../client/settle";
 import { ctaClass } from "../styles";
 
-export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?: string }) {
+/** `hasSession`: this browser is already signed in (anonymously), so the CAPTCHA that guards creating a login is not needed. */
+export function NameEntry({ sessionCode, nonce, hasSession }: { sessionCode: string; nonce?: string; hasSession: boolean }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [token, setToken] = useState<string>();
@@ -30,7 +32,7 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
     e.preventDefault();
     setError(null);
     startTransition(async () => {
-      const supabase = createClient();
+      const supabase = getBrowserSupabase();
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
         // Signing in from the browser keeps Supabase's per-IP rate limit per player.
@@ -45,7 +47,7 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
           );
         }
       }
-      const res = await saveDisplayName(name);
+      const res = await settle(() => saveDisplayName(name));
       if (!res.ok) return fail(res.error);
       router.refresh();
     });
@@ -74,8 +76,8 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
             />
             {error && <FieldError>{error}</FieldError>}
           </Field>
-          <Captcha ref={captcha} onToken={setToken} nonce={nonce} />
-          <Button type="submit" className={ctaClass} disabled={pending || !name.trim() || (captchaEnabled && !token)}>
+          {!hasSession && <Captcha ref={captcha} onToken={setToken} nonce={nonce} />}
+          <Button type="submit" className={ctaClass} disabled={pending || !name.trim() || (captchaEnabled && !hasSession && !token)}>
             {pending ? "One sec…" : "Continue"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">

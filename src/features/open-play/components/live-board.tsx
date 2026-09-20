@@ -3,14 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { createClient } from "@/lib/supabase/client";
+import { getBrowserSupabase } from "@/lib/supabase/client";
 import { finishRound } from "../actions/finish-round";
 import { joinQueue } from "../actions/join-queue";
 import { leaveQueue } from "../actions/leave-queue";
 import { setRoundPaused } from "../actions/pause-round";
 import { removePlayer } from "../actions/remove-player";
-import type { ActionResult } from "../actions/rpc";
+import type { ActionResult } from "../actions/result";
 import { startRound } from "../actions/start-round";
+import { settle } from "../client/settle";
 import { makeEta } from "../eta";
 import { useAlerts } from "../hooks/use-alerts";
 import { useNow } from "../hooks/use-now";
@@ -33,7 +34,7 @@ const NOTICES = {
   ended: "That session has ended. This is the session running now.",
 } as const;
 
-export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: keyof typeof NOTICES }) {
+export function LiveBoard({ initial, notice, joinUrl }: { initial: Snapshot; notice?: keyof typeof NOTICES; joinUrl: string }) {
   const router = useRouter();
   const { snapshot, offsetMs, connected, refresh } = useSessionRealtime(initial);
   const now = useNow(initial.server_now, offsetMs);
@@ -67,7 +68,8 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         reported.current.set(key, Date.now());
         const [kind, id] = key.split(":");
         if (!id) continue;
-        void (kind === "start" ? startRound(id) : finishRound(id)).then(() => refresh());
+        // A report that did not get through (offline) is simply sent again by the retry below.
+        void settle(() => (kind === "start" ? startRound(id) : finishRound(id))).then(() => refresh());
       }
     };
     const first = setTimeout(report, Math.random() * 1000); // spread simultaneous reports across phones
@@ -92,7 +94,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
     if (!ended || !isPlayer) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
-    void createClient()
+    void getBrowserSupabase()
       .rpc("get_active_session_code")
       .then(({ data }) => {
         if (cancelled || typeof data !== "string" || data === session.code) return;
@@ -137,7 +139,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   function run(action: () => Promise<ActionResult>) {
     setError(null);
     startTransition(async () => {
-      const res = await action();
+      const res = await settle(action);
       if (!res.ok) setError(res.error);
       await refresh();
     });
@@ -164,7 +166,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         </div>
         <div className="flex shrink-0 items-center gap-3 lg:gap-6">
           {session.status === "ACTIVE" && <AlertsMenu alerts={alerts} push={push} open={alertsOpen} onOpenChange={setAlertsOpen} />}
-          {session.status === "ACTIVE" && <QrButton size={36} />}
+          {session.status === "ACTIVE" && <QrButton url={joinUrl} size={36} placeholder />}
           <span className="flex items-center gap-2 font-mono text-caption font-medium tracking-caps text-mat lg:text-xs">
             <i className={`live-dot size-2 rounded-full ${connected ? "bg-mat" : "bg-cork"}`} />
             {/* On a phone the dot says it (green / amber); the word is for screen readers and wider screens. */}

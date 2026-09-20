@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 import { LiveBoard } from "@/features/open-play/components/live-board";
 import { NameEntry } from "@/features/open-play/components/name-entry";
 import { sessionCodeSchema } from "@/features/open-play/schemas";
-import type { Snapshot } from "@/features/open-play/types";
-import { getActiveSessionCode } from "@/lib/supabase/active-session";
+import { getActiveSessionCode, getSessionSnapshot } from "@/features/open-play/server/queries";
+import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: PageProps<"/play/[code]">): Promise<Metadata> {
@@ -32,13 +32,11 @@ export default async function PlayPage({ params, searchParams }: PageProps<"/pla
   const notice = noticeParam === "not-found" || noticeParam === "ended" ? noticeParam : undefined;
 
   const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims) return <NameEntry sessionCode={code} nonce={nonce} />;
+  if (!claims?.claims) return <NameEntry sessionCode={code} nonce={nonce} hasSession={false} />;
 
-  const { data, error } = await supabase.rpc("get_snapshot", { p_code: code });
-  if (error) throw new Error(`get_snapshot failed: ${error.message}`); // -> error.tsx, not a misleading 404
-  if (!data) return sendToLive(supabase, "not-found", code);
-  const snapshot = data as Snapshot;
-  if (!snapshot.me.display_name) return <NameEntry sessionCode={code} nonce={nonce} />;
+  const snapshot = await getSessionSnapshot(supabase, code); // a database error throws -> error.tsx, not a misleading 404
+  if (!snapshot) return sendToLive(supabase, "not-found", code);
+  if (!snapshot.me.display_name) return <NameEntry sessionCode={code} nonce={nonce} hasSession />;
 
   // An ended session is a dead end for players: move them on. Officers can still open it to look.
   if (snapshot.session.status === "ENDED" && !snapshot.me.role) {
@@ -46,5 +44,5 @@ export default async function PlayPage({ params, searchParams }: PageProps<"/pla
     if (live && live !== code) redirect(`/play/${live}?notice=ended`);
   }
 
-  return <LiveBoard initial={snapshot} notice={notice} />;
+  return <LiveBoard initial={snapshot} notice={notice} joinUrl={serverEnv.APP_URL} />;
 }

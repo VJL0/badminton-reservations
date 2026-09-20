@@ -1,57 +1,128 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Captcha, type CaptchaHandle, captchaEnabled } from "@/components/captcha";
+import { getBrowserSupabase } from "@/lib/supabase/client";
+import { listen } from "../client/realtime";
+import { activeSessionCodeSchema } from "../schemas";
 
-const POLL_MS = 5000;
+const FALLBACK_MS = 30_000;
 
 /**
- * Sits on the "nothing is running" page and opens the queue the moment a session starts, so a player who
- * arrived early doesn't have to scan or refresh. Checks every few seconds while the page is showing, and
- * right away when the phone wakes up or comes back online.
+ * Sits on the "nothing is running" page and opens the queue the moment a session starts, so a player who arrived
+ * early doesn't have to scan or refresh.
+ *
+ * It listens on a private lobby channel, which needs a login, so the browser signs in anonymously first (behind
+ * the same Turnstile check as the name form). A message on the channel only means "the live session changed":
+ * the answer always comes from asking the database. The same question is asked when the channel (re)connects and
+ * when the phone wakes or comes back online. There is no polling interval; a slow check runs only while the
+ * channel is not connected, as a last resort after Realtime has been failing for a while.
  */
-export function WaitingForSession() {
+export function WaitingForSession({ nonce }: { nonce?: string }) {
   const router = useRouter();
+  const [token, setToken] = useState<string>();
+  const [needsCheck, setNeedsCheck] = useState(false);
+  const [ready, setReady] = useState(false);
+  const [subscribed, setSubscribed] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const captcha = useRef<CaptchaHandle>(null);
+  const inFlight = useRef(false);
+  const arrived = useRef(false);
 
-  useEffect(() => {
-    const supabase = createClient();
-    let stopped = false;
-    let inFlight = false;
-
-    async function check() {
-      if (stopped || inFlight || document.visibilityState !== "visible") return;
-      inFlight = true;
-      try {
-        const { data } = await supabase.rpc("get_active_session_code");
-        if (!stopped && typeof data === "string") {
-          stopped = true;
-          router.replace(`/play/${data}`);
-        }
-      } catch {
-        // Offline or a blip: the next check tries again.
-      } finally {
-        inFlight = false;
+  // Ask the database whether a session is live; if so, go there.
+  const check = useCallback(async () => {
+    if (arrived.current || inFlight.current || document.visibilityState !== "visible") return;
+    inFlight.current = true;
+    try {
+      const { data } = await getBrowserSupabase().rpc("get_active_session_code");
+      const code = activeSessionCodeSchema.safeParse(data);
+      if (code.success && code.data && !arrived.current) {
+        arrived.current = true;
+        router.replace(`/play/${code.data}`);
       }
+    } catch {
+      // Offline or a blip: the next signal asks again.
+    } finally {
+      inFlight.current = false;
     }
-
-    const timer = setInterval(check, POLL_MS);
-    document.addEventListener("visibilitychange", check);
-    window.addEventListener("online", check);
-    window.addEventListener("pageshow", check);
-    return () => {
-      stopped = true;
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", check);
-      window.removeEventListener("online", check);
-      window.removeEventListener("pageshow", check);
-    };
   }, [router]);
 
+  // 1. This browser needs a login before it may join the private channel.
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const supabase = getBrowserSupabase();
+      const { data } = await supabase.auth.getSession();
+      if (cancelled) return;
+      if (data.session) return setReady(true);
+      if (captchaEnabled && !token) return setNeedsCheck(true); // show the widget; this runs again once it hands back a token
+      const { error } = await supabase.auth.signInAnonymously({ options: { captchaToken: token } });
+      if (cancelled) return;
+      if (error) {
+        captcha.current?.reset(); // tokens are single-use
+        setToken(undefined);
+        return setFailed(true);
+      }
+      setNeedsCheck(false);
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [token]);
+
+  // 2. Listen for the lobby announcing a change, and ask right away in case we missed one.
+  useEffect(() => {
+    if (!ready) return;
+    void check();
+    return listen(
+      "open-play:lobby",
+      "active_session_changed",
+      () => void check(),
+      (status) => {
+        setSubscribed(status === "SUBSCRIBED");
+        if (status === "SUBSCRIBED") void check();
+      },
+    );
+  }, [ready, check]);
+
+  // 3. Coming back to the page is a reason to ask again.
+  useEffect(() => {
+    const again = () => void check();
+    document.addEventListener("visibilitychange", again);
+    window.addEventListener("online", again);
+    window.addEventListener("pageshow", again);
+    return () => {
+      document.removeEventListener("visibilitychange", again);
+      window.removeEventListener("online", again);
+      window.removeEventListener("pageshow", again);
+    };
+  }, [check]);
+
+  // 4. Last resort: only while the channel is not connected (Realtime down, or the login failed).
+  useEffect(() => {
+    if (subscribed) return;
+    const timer = setInterval(() => void check(), FALLBACK_MS);
+    return () => clearInterval(timer);
+  }, [subscribed, check]);
+
   return (
-    <p role="status" className="flex items-center gap-2 font-mono text-xs font-medium tracking-caps text-mat uppercase">
-      <i className="live-dot size-2 rounded-full bg-mat" />
-      Waiting for open play to start
-    </p>
+    <div className="flex flex-col gap-4">
+      <p
+        role="status"
+        data-live-updates={subscribed ? "on" : "off"}
+        className="flex items-center gap-2 font-mono text-xs font-medium tracking-caps text-mat uppercase"
+      >
+        <i className="live-dot size-2 rounded-full bg-mat" />
+        Waiting for open play to start
+      </p>
+      {needsCheck && <Captcha ref={captcha} onToken={setToken} nonce={nonce} />}
+      {failed && (
+        <p role="alert" className="text-sm text-muted-foreground">
+          Couldn&apos;t connect for live updates. We&apos;ll keep checking every so often.
+        </p>
+      )}
+    </div>
   );
 }

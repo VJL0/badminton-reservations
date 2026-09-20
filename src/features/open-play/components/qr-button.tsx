@@ -7,7 +7,18 @@ import { useRef, useState } from "react";
  * Small QR that opens full-screen-sized on tap, so it can be scanned from across a table.
  * It always points at the site root, which sends players to whichever session is live, so one printed QR serves every night.
  */
-export function QrButton({ url, size = 88, downloadable = false }: { url?: string; size?: number; downloadable?: boolean }) {
+/** `placeholder`: show a plain icon on the button and draw the real code only in the dialog (the header button is tiny). */
+export function QrButton({
+  url,
+  size = 88,
+  downloadable = false,
+  placeholder = false,
+}: {
+  url?: string;
+  size?: number;
+  downloadable?: boolean;
+  placeholder?: boolean;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const [href, setHref] = useState(url ?? "");
@@ -35,7 +46,7 @@ export function QrButton({ url, size = 88, downloadable = false }: { url?: strin
         aria-label="Show QR code to join"
         className="cursor-zoom-in rounded-xl bg-white p-2 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2"
       >
-        {url ? <QRCodeSVG value={url} size={size} /> : <QrPlaceholder size={size} />}
+        {url && !placeholder ? <QRCodeSVG value={url} size={size} /> : <QrPlaceholder size={size} />}
       </button>
       {/* Escape closes a modal <dialog> natively; clicking the backdrop is just a pointer shortcut. */}
       {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}

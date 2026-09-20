@@ -111,8 +111,8 @@ export function CourtCard({
       <PlayerSlot
         key={n}
         name={p?.name}
-        isMe={p?.player_id === me.id}
-        onRemove={isStaff && p && filling ? () => onRemove(p.player_id) : undefined}
+        isMe={p?.participant_id === me.participant_id}
+        onRemove={isStaff && p && filling ? () => onRemove(p.participant_id) : undefined}
       />
     );
   };

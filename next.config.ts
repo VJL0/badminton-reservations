@@ -19,11 +19,6 @@ const nextConfig: NextConfig = {
   reactCompiler: true,
   // Links and redirects are checked against the real routes: a typo or a removed page is a compile error.
   typedRoutes: true,
-  experimental: {
-    // On a dropped connection, hold a navigation or Server Action (join queue, leave, pause...) and run it
-    // once the network is back, instead of failing. See <OfflineBanner>. Experimental in 16.3.
-    useOffline: true,
-  },
   poweredByHeader: false,
   // Dev only: lets a phone on the same Wi-Fi open http://<this-computer's-IP>:3000 (private address ranges).
   allowedDevOrigins: ["10.*.*.*", "192.168.*.*", "172.*.*.*"],
@@ -41,7 +36,20 @@ const nextConfig: NextConfig = {
     ];
   },
   async headers() {
-    return [{ source: "/(.*)", headers: securityHeaders }];
+    return [
+      { source: "/(.*)", headers: securityHeaders },
+      // The service worker only shows push notifications. It is never cached (a fixed worker must reach phones at
+      // once), is always served as JavaScript, and may load nothing but its own origin. Its rules come last so they
+      // win over the general ones above. (The proxy skips this file, so this is where its CSP comes from.)
+      {
+        source: "/sw.js",
+        headers: [
+          { key: "Content-Type", value: "application/javascript; charset=utf-8" },
+          { key: "Cache-Control", value: "no-cache, no-store, must-revalidate" },
+          { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'" },
+        ],
+      },
+    ];
   },
 };
 
