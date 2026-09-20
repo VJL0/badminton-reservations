@@ -89,6 +89,14 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
     };
   }, [ended, isPlayer, session.code, router]);
 
+  // Whatever the Home Screen icon was counting, the player has now seen it.
+  useEffect(() => {
+    const clear = () => document.visibilityState === "visible" && void navigator.clearAppBadge?.().catch(() => {});
+    clear();
+    document.addEventListener("visibilitychange", clear);
+    return () => document.removeEventListener("visibilitychange", clear);
+  }, []);
+
   // Keep the screen on while you're queued or on a court, and nudge you when your turn comes.
   useWakeLock(me.state !== "IDLE" && session.status === "ACTIVE");
   const alerts = useAlerts();
@@ -156,7 +164,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         onFinish={(roundId) => run(() => finishRound(roundId))}
         onTogglePause={(roundId, pause) => run(() => setRoundPaused(roundId, pause))}
       />
-      {session.status === "ACTIVE" && <AlertSettings sound={alerts.enabled} onSound={alerts.set} canVibrate={alerts.canVibrate} />}
+      {session.status === "ACTIVE" && <AlertSettings sound={alerts.enabled} onSound={alerts.set} onTry={alerts.preview} canVibrate={alerts.canVibrate} />}
       {me.role === "ADMIN" && session.status === "ACTIVE" && <SessionSettings snapshot={snapshot} busy={pending} run={run} />}
       {error && (
         <Alert variant="destructive">

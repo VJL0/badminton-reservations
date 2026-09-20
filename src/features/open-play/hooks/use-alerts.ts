@@ -36,10 +36,13 @@ function subscribe(l: () => void) {
 
 type Kind = "next" | "court";
 
+type AudioSessionNav = Navigator & { audioSession?: { type: string } };
+
 /**
- * Sound and vibration for "you're up next" / "you're on court". Off until the player turns it on:
- * browsers only allow audio after a tap, and iPhones can't vibrate a web page at all, so this is
- * an opt-in extra rather than something to spring on people in a quiet gym.
+ * Sound and vibration for "you're up next" / "you're on court" while the page is open. Off until the
+ * player turns it on: browsers only allow audio after a tap, and this shouldn't spring on people in a
+ * quiet gym. Vibration is `navigator.vibrate`, which Android browsers implement and iPhone Safari never
+ * has; on an iPhone the phone-notification path (see use-push) is the only way to get a buzz.
  */
 export function useAlerts() {
   const enabled = useSyncExternalStore(subscribe, read, () => false);
@@ -49,6 +52,11 @@ export function useAlerts() {
 
   const audio = useCallback(() => {
     if (!ctx.current) {
+      // Safari puts plain Web Audio in the "ambient" category, which the iPhone's silent switch mutes.
+      // "playback" (Audio Session API, Safari only) must be set before the context is created. The
+      // player turned alerts on themselves, so an alert they asked for is allowed to be heard.
+      const session = (navigator as AudioSessionNav).audioSession;
+      if (session) session.type = "playback";
       const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (Ctor) ctx.current = new Ctor();
     }
@@ -90,7 +98,13 @@ export function useAlerts() {
     // A reloaded page has a locked audio context until the next tap.
     const unlock = () => void audio();
     window.addEventListener("pointerdown", unlock, { once: true });
-    return () => window.removeEventListener("pointerdown", unlock);
+    // iOS suspends audio when the page is backgrounded or a call interrupts it; wake it when we're back.
+    const onVisible = () => document.visibilityState === "visible" && void ctx.current?.resume();
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [enabled, audio]);
 
   const set = useCallback(
@@ -101,5 +115,12 @@ export function useAlerts() {
     [play],
   );
 
-  return { enabled, set, notify: useCallback((kind: Kind) => enabled && play(kind), [enabled, play]), canVibrate };
+  return {
+    enabled,
+    set,
+    /** Play the real "it's your court" alert now (for the "try it" button). Always runs inside a tap. */
+    preview: useCallback(() => play("court"), [play]),
+    notify: useCallback((kind: Kind) => enabled && play(kind), [enabled, play]),
+    canVibrate,
+  };
 }

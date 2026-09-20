@@ -23,6 +23,7 @@ export function buildCsp(nonce: string) {
     "font-src 'self'",
     `connect-src 'self' ${supabase.origin} ${realtime}`,
     `frame-src ${turnstile}`,
+    "worker-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
