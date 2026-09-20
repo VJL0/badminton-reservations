@@ -1,5 +1,5 @@
 begin;
-select plan(77);
+select plan(71);
 
 create schema tests;
 -- Run SQL as an authenticated user, then hand the role back (so pgTAP itself
@@ -140,7 +140,7 @@ select tests.call(tests.uid(5), format('select public.leave_queue(%L)', (select 
 select is((select state::text from public.session_players where player_id = tests.uid(5) and session_id = (select id from t_k)), 'IDLE',
           'a waiting player can leave');
 select throws_ok(format('select tests.join(tests.uid(5), %L)', (select id from t_k)), 'too_fast', 'instant leave/join churn is throttled');
-select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 9,
+select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 7,
           'every table has an explicit deny policy');
 
 -- ---------- choosing a court (queue for a specific court)
@@ -278,33 +278,6 @@ select tests.call(tests.uid(100), format('select public.update_session_settings(
 select tests.join(tests.uid(14), (select id from t_mn));
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'ACTIVE',
           'with auto-start back on, the 4th arrival starts the game');
-
--- ---------- push notifications
-insert into public.push_config (key, value) values ('url', 'http://localhost:3000/api/push'), ('secret', 's3cret');
-select tests.call(tests.uid(100), $$select public.create_session('Push', 1, 600, 'PUSHIT')$$);
-create temp table t_ps as select id from public.open_play_sessions where code = 'PUSHIT';
-select throws_ok(format('select tests.call(tests.uid(1), %L)', $$select public.save_push_subscription('http://insecure.example/x', 'k', 'a')$$),
-  'invalid_subscription', 'only https push endpoints are stored');
-select tests.call(tests.uid(1), $$select public.save_push_subscription('https://push.example/one', 'k', 'a')$$);
-select tests.call(tests.uid(2), $$select public.save_push_subscription('https://push.example/two', 'k', 'a')$$);
-select is((select count(*)::int from public.push_subscriptions where endpoint like 'https://push.example/%'), 2, 'subscriptions are stored');
-select tests.join(tests.uid(n), (select id from t_ps)) from generate_series(5, 8) n;
-create temp table t_q0 as select count(*)::int n from net.http_request_queue;
-select tests.join(tests.uid(1), (select id from t_ps));
-select is((select count(*)::int from net.http_request_queue) - (select n from t_q0), 0, 'you are not notified about your own action');
-select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_ps) and status = 'ACTIVE')));
-select is((select count(*)::int from net.http_request_queue) - (select n from t_q0), 1, 'a player seated by someone else is pushed');
-select ok((select bool_and(convert_from(body, 'utf8')::jsonb ->> 'title' = 'You''re on court 1' and headers ->> 'x-push-secret' = 's3cret')
-             from net.http_request_queue where id > (select max(id) - 1 from net.http_request_queue)),
-          'the push says which court and carries the secret');
-select tests.join(tests.uid(n), (select id from t_ps)) from generate_series(9, 11) n;  -- court now full and running
-select tests.join(tests.uid(n), (select id from t_ps)) from generate_series(13, 16) n;  -- queue #1-#4
-select tests.join(tests.uid(2), (select id from t_ps));                                 -- queue #5
-select tests.call(tests.uid(13), format('select public.leave_queue(%L)', (select id from t_ps)));
-select ok(exists (select 1 from net.http_request_queue
-                   where convert_from(body, 'utf8')::jsonb ->> 'title' = 'You''re up next'
-                     and convert_from(body, 'utf8')::jsonb ->> 'player_id' = tests.uid(2)::text),
-          'moving into the next four is pushed');
 
 -- ---------- ending a session
 select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_s)));

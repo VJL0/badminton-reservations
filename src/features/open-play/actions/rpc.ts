@@ -21,7 +21,6 @@ const MESSAGES: Record<string, string> = {
   round_not_active: "That game isn't running.",
   invalid_name: "Enter a name between 1 and 40 characters.",
   queue_full: "The queue is full right now. Try again in a few minutes.",
-  invalid_subscription: "This browser can't receive notifications.",
   too_fast: "Slow down a second, then try again.",
 };
 
