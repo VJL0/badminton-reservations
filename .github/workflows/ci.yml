@@ -39,6 +39,7 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
           NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+          APP_URL: http://127.0.0.1:3000
 
   database:
     runs-on: ubuntu-latest
@@ -59,6 +60,28 @@ jobs:
       - run: pnpm db:types
       - run: git diff --exit-code src/lib/supabase/database.types.ts
       # When something above failed, put the local stack's state in the log so the failure can be understood.
+      - name: Supabase diagnostics
+        if: failure()
+        run: |
+          pnpm supabase status || true
+          docker ps --format 'table {{.Names}}\t{{.Status}}'
+
+  # Real browsers, one per player, against the production build and the local Supabase stack: the waiting
+  # phone that opens the queue by itself, joins racing each other, offline phones catching up, invitations.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      - run: pnpm supabase start -x studio,imgproxy,edge-runtime,logflare,vector,mailpit
+      - run: pnpm exec playwright install --with-deps chromium
+      # playwright.config.ts builds the app, serves it on :3100 and reads the stack's keys from `supabase status`.
+      - run: pnpm e2e
       - name: Supabase diagnostics
         if: failure()
         run: |

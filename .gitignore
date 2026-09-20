@@ -45,3 +45,8 @@ next-env.d.ts
 
 # example env file is documentation, not a secret
 !.env.example
+
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
