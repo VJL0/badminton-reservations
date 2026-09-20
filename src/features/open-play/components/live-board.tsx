@@ -14,10 +14,11 @@ import { startRound } from "../actions/start-round";
 import { makeEta } from "../eta";
 import { useAlerts } from "../hooks/use-alerts";
 import { useNow } from "../hooks/use-now";
+import { usePush } from "../hooks/use-push";
 import { useSessionRealtime } from "../hooks/use-session-realtime";
 import { useWakeLock } from "../hooks/use-wake-lock";
 import { isUpNext, type Snapshot } from "../types";
-import { AlertSettings } from "./alert-settings";
+import { AlertsMenu, AlertsPrompt } from "./alerts-menu";
 import { CourtCard } from "./court-card";
 import { PanelBoundary } from "./panel-boundary";
 import { PlayerStatus } from "./player-status";
@@ -115,6 +116,8 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   // Keep the screen on while you're queued or on a court, and nudge you when your turn comes.
   useWakeLock(me.state !== "IDLE" && session.status === "ACTIVE");
   const alerts = useAlerts();
+  const push = usePush();
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const last = useRef<{ playing: boolean; next: boolean } | null>(null);
   const playing = me.state === "PLAYING";
   const upNext = isUpNext(me);
@@ -160,6 +163,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 lg:gap-6">
+          {session.status === "ACTIVE" && <AlertsMenu alerts={alerts} push={push} open={alertsOpen} onOpenChange={setAlertsOpen} />}
           {session.status === "ACTIVE" && <QrButton size={36} />}
           <span className="flex items-center gap-2 font-mono text-caption font-medium tracking-caps text-mat lg:text-xs">
             <i className={`live-dot size-2 rounded-full ${connected ? "bg-mat" : "bg-cork"}`} />
@@ -184,6 +188,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
           </AlertDescription>
         </Alert>
       )}
+      {session.status === "ACTIVE" && <AlertsPrompt alerts={alerts} push={push} onOpen={() => setAlertsOpen(true)} />}
       <PlayerStatus
         snapshot={snapshot}
         now={now}
@@ -195,11 +200,6 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         onFinish={(roundId) => run(() => finishRound(roundId))}
         onTogglePause={(roundId, pause) => run(() => setRoundPaused(roundId, pause))}
       />
-      {session.status === "ACTIVE" && (
-        <PanelBoundary label="Alerts">
-          <AlertSettings sound={alerts.enabled} onSound={alerts.set} onTry={alerts.preview} canVibrate={alerts.canVibrate} />
-        </PanelBoundary>
-      )}
       {me.role === "ADMIN" && session.status === "ACTIVE" && (
         <PanelBoundary label="Session settings">
           <SessionSettings snapshot={snapshot} busy={pending} run={run} />
