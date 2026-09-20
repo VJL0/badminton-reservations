@@ -12,6 +12,8 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   reactCompiler: true,
   poweredByHeader: false,
+  // Dev only: lets a phone on the same Wi-Fi open http://<this-computer's-IP>:3000 (private address ranges).
+  allowedDevOrigins: ["10.*.*.*", "192.168.*.*", "172.*.*.*"],
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
