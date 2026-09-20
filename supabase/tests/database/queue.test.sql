@@ -1,5 +1,5 @@
 begin;
-select plan(71);
+select plan(90);
 
 create schema tests;
 -- Run SQL as an authenticated user, then hand the role back (so pgTAP itself
@@ -140,7 +140,7 @@ select tests.call(tests.uid(5), format('select public.leave_queue(%L)', (select 
 select is((select state::text from public.session_players where player_id = tests.uid(5) and session_id = (select id from t_k)), 'IDLE',
           'a waiting player can leave');
 select throws_ok(format('select tests.join(tests.uid(5), %L)', (select id from t_k)), 'too_fast', 'instant leave/join churn is throttled');
-select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 7,
+select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 8,
           'every table has an explicit deny policy');
 
 -- ---------- choosing a court (queue for a specific court)
@@ -278,6 +278,90 @@ select tests.call(tests.uid(100), format('select public.update_session_settings(
 select tests.join(tests.uid(14), (select id from t_mn));
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'ACTIVE',
           'with auto-start back on, the 4th arrival starts the game');
+
+-- ---------- queue history is recorded by the database
+select tests.call(tests.uid(100), $$select public.create_session('Track', 1, 600, 'TRACK')$$);
+create temp table t_tr as select id from public.open_play_sessions where code = 'TRACK';
+select tests.join(tests.uid(n), (select id from t_tr)) from generate_series(1, 4) n;
+select is((select count(*)::int from public.queue_entries where session_id = (select id from t_tr) and outcome = 'ASSIGNED'), 4,
+          'players seated at once still leave a wait record');
+select tests.join(tests.uid(5), (select id from t_tr));
+select tests.call(tests.uid(5), format('select public.leave_queue(%L)', (select id from t_tr)));
+select is((select outcome::text from public.queue_entries where session_id = (select id from t_tr) and player_id = tests.uid(5)), 'LEFT',
+          'leaving the queue is recorded as LEFT');
+update public.session_players set updated_at = now() - interval '1 minute' where session_id = (select id from t_tr);
+select tests.join(tests.uid(5), (select id from t_tr));
+select tests.join(tests.uid(6), (select id from t_tr));
+select tests.call(tests.uid(100), format('select public.remove_player(%L, %L)', (select id from t_tr), tests.uid(6)));
+select is((select outcome::text from public.queue_entries where session_id = (select id from t_tr) and player_id = tests.uid(6)), 'REMOVED',
+          'an officer removing someone is recorded as REMOVED');
+select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_tr) and status = 'ACTIVE')));
+select ok((select outcome = 'ASSIGNED' and round_id is not null from public.queue_entries
+            where session_id = (select id from t_tr) and player_id = tests.uid(5) and outcome = 'ASSIGNED'),
+          'getting a court is recorded with the game');
+update public.session_players set updated_at = now() - interval '1 minute' where session_id = (select id from t_tr);
+select tests.join(tests.uid(n), (select id from t_tr)) from generate_series(8, 10) n;  -- fill the court so the next player must wait
+select tests.join(tests.uid(7), (select id from t_tr));
+select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_tr)));
+select is((select outcome::text from public.queue_entries where session_id = (select id from t_tr) and player_id = tests.uid(7)), 'SESSION_ENDED',
+          'still waiting when the session ends is recorded as SESSION_ENDED');
+select is((select count(*)::int from public.queue_entries where session_id = (select id from t_tr) and ended_at is null), 0, 'no wait is left open after the session ends');
+
+-- ---------- session summary numbers (hand-built timeline so every figure is checkable)
+select tests.call(tests.uid(100), $$select public.create_session('Summary', 1, 1200, 'SUMM')$$);
+create temp table t_su as select id from public.open_play_sessions where code = 'SUMM';
+update public.open_play_sessions set started_at = '2026-01-01 20:00+00', ended_at = '2026-01-01 22:00+00', status = 'ENDED'
+ where id = (select id from t_su);
+update public.courts set created_at = '2026-01-01 20:00+00' where session_id = (select id from t_su);
+insert into public.session_players (session_id, player_id, state, joined_at, updated_at)
+select (select id from t_su), tests.uid(n), 'IDLE', '2026-01-01 20:05+00',
+       case when n = 7 then '2026-01-01 22:00+00'::timestamptz else '2026-01-01 20:50+00'::timestamptz end
+  from generate_series(1, 7) n;
+insert into public.rounds (id, session_id, court_id, status, started_at, ends_at, ended_at) values
+  ('11111111-1111-4111-8111-111111111111', (select id from t_su), (select id from public.courts where session_id = (select id from t_su)), 'COMPLETED', '2026-01-01 20:10+00', '2026-01-01 20:30+00', '2026-01-01 20:30+00'),
+  ('22222222-2222-4222-8222-222222222222', (select id from t_su), (select id from public.courts where session_id = (select id from t_su)), 'COMPLETED', '2026-01-01 20:30+00', '2026-01-01 20:50+00', '2026-01-01 20:50+00');
+insert into public.round_players (round_id, player_id, slot, joined_at, left_at)
+select '11111111-1111-4111-8111-111111111111', tests.uid(n), n, '2026-01-01 20:10+00', '2026-01-01 20:30+00' from generate_series(1, 4) n;
+insert into public.round_players (round_id, player_id, slot, joined_at, left_at) values
+  ('22222222-2222-4222-8222-222222222222', tests.uid(5), 1, '2026-01-01 20:30+00', '2026-01-01 20:50+00'),
+  ('22222222-2222-4222-8222-222222222222', tests.uid(6), 2, '2026-01-01 20:30+00', '2026-01-01 20:50+00'),
+  ('22222222-2222-4222-8222-222222222222', tests.uid(1), 3, '2026-01-01 20:30+00', '2026-01-01 20:50+00'),
+  ('22222222-2222-4222-8222-222222222222', tests.uid(2), 4, '2026-01-01 20:30+00', '2026-01-01 20:50+00');
+insert into public.queue_entries (session_id, player_id, queued_at, ended_at, outcome) values
+  ((select id from t_su), tests.uid(1), '2026-01-01 20:05+00', '2026-01-01 20:10+00', 'ASSIGNED'),
+  ((select id from t_su), tests.uid(2), '2026-01-01 20:05+00', '2026-01-01 20:10+00', 'ASSIGNED'),
+  ((select id from t_su), tests.uid(3), '2026-01-01 20:05+00', '2026-01-01 20:10+00', 'ASSIGNED'),
+  ((select id from t_su), tests.uid(4), '2026-01-01 20:05+00', '2026-01-01 20:10+00', 'ASSIGNED'),
+  ((select id from t_su), tests.uid(5), '2026-01-01 20:15+00', '2026-01-01 20:30+00', 'ASSIGNED'),
+  ((select id from t_su), tests.uid(6), '2026-01-01 20:20+00', '2026-01-01 20:30+00', 'ASSIGNED'),
+  ((select id from t_su), tests.uid(7), '2026-01-01 20:05+00', '2026-01-01 22:00+00', 'SESSION_ENDED');
+create function tests.summary(p_sql text) returns jsonb language plpgsql as $$
+declare v jsonb;
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', tests.uid(100), 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+  execute p_sql into v;
+  perform set_config('role', 'postgres', true);
+  return v;
+end $$;
+create temp table t_sum as select tests.summary(format('select public.get_session_summary(%L)', (select id from t_su))) as j;
+select throws_ok(format('select tests.call(tests.uid(1), %L)', format('select public.get_session_summary(%L)', (select id from t_su))),
+  'not_staff', 'players cannot open a summary');
+select is((select (j -> 'totals' ->> 'players')::int from t_sum), 7, 'summary counts every player who joined');
+select is((select (j -> 'totals' ->> 'games')::int from t_sum), 2, 'summary counts started games');
+select is((select (j -> 'totals' ->> 'median_wait_s')::int from t_sum), 300, 'median wait is the typical wait, not thrown off by one long one');
+select is((select (j -> 'totals' ->> 'longest_wait_s')::int from t_sum), 6900, 'longest wait includes someone who never got a court');
+select is((select (j -> 'totals' ->> 'peak_queue')::int from t_sum), 5, 'peak queue is the most people waiting at once');
+select is((select (j -> 'totals' ->> 'no_games')::int from t_sum), 1, 'one player never played');
+select is((select (p ->> 'playing_s')::int from t_sum, jsonb_array_elements(j -> 'players') p where p ->> 'name' is not null and (p ->> 'player_id')::uuid = tests.uid(1)), 2400,
+          'playing time adds up across games');
+select is((select (p ->> 'waiting_s')::int from t_sum, jsonb_array_elements(j -> 'players') p where (p ->> 'player_id')::uuid = tests.uid(5)), 900,
+          'waiting time is the queue time before a court');
+select is((select p -> 'flags' from t_sum, jsonb_array_elements(j -> 'players') p where (p ->> 'player_id')::uuid = tests.uid(7)), '["no_games", "long_wait"]'::jsonb,
+          'a player who waited the whole night is flagged');
+select is((select (j -> 'court_use' ->> 'busy_s')::int from t_sum), 2400, 'court busy time');
+select is((select (j -> 'court_use' ->> 'window_s')::int from t_sum), 7200, 'court available time');
+select is((select (j -> 'court_use' ->> 'idle_backed_s')::int from t_sum), 300, 'idle court time only counts while a full game was waiting');
 
 -- ---------- ending a session
 select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_s)));
