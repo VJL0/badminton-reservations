@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { LocalTime } from "@/components/local-time";
+import type { PlayerStat } from "@/features/open-play/schemas";
 import { metaClass } from "@/features/open-play/styles";
 import { formatDuration } from "@/lib/format";
-import type { PlayerStat } from "./summary-types";
 
 type Sort = { label: string; cmp: (a: PlayerStat, b: PlayerStat) => number };
 
@@ -62,7 +62,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
 
       <ul className="divide-y">
         {shown.map((p) => (
-          <li key={p.player_id}>
+          <li key={p.participant_id}>
             <details className="group">
               <summary className="flex min-h-14 cursor-pointer list-none flex-col justify-center gap-0.5 py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-mat [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center justify-between gap-2">

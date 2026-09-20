@@ -1,7 +1,8 @@
 import { idSchema } from "@/features/open-play/schemas";
+import { getIdentity } from "@/features/open-play/server/auth";
+import { getSessionSummary } from "@/features/open-play/server/queries";
 import { csvCell } from "@/lib/format";
 import { createClient } from "@/lib/supabase/server";
-import type { Summary } from "../summary-types";
 
 // One row per player, for the club's own records (attendance, participation). Officers only: the
 // database refuses anyone else, and a missing or wrong session id is a plain 404.
@@ -9,19 +10,14 @@ export async function GET(_request: Request, ctx: RouteContext<"/admin/sessions/
   const id = idSchema.safeParse((await ctx.params).id);
   if (!id.success) return new Response("Not found", { status: 404 });
 
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims) return new Response("Sign in first", { status: 401 });
+  const me = await getIdentity();
+  if (!me) return new Response("Sign in first", { status: 401 });
+  if (!me.role) return new Response("Forbidden", { status: 403 });
 
-  const { data, error } = await supabase.rpc("get_session_summary", {
-    p_session_id: id.data,
-  });
-  if (error)
-    return new Response(error.message === "not_staff" ? "Forbidden" : "Something went wrong", {
-      status: error.message === "not_staff" ? 403 : 500,
-    });
-  if (!data) return new Response("Not found", { status: 404 });
-  const { session, players } = data as Summary;
+  const summary = await getSessionSummary(await createClient(), id.data).catch(() => undefined);
+  if (summary === undefined) return new Response("Something went wrong", { status: 500 });
+  if (!summary) return new Response("Not found", { status: 404 });
+  const { session, players } = summary;
 
   const min = (s: number | null) => (s === null ? "" : (s / 60).toFixed(1));
   const rows = [

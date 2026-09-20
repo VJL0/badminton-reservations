@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { headers } from "next/headers";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CenteredPage } from "@/components/page-shell";
@@ -8,35 +7,23 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { signOut } from "@/features/open-play/actions/admin";
 import { ShuttleIcon } from "@/features/open-play/components/shuttle-icon";
+import type { SessionRow } from "@/features/open-play/schemas";
+import { getIdentity } from "@/features/open-play/server/auth";
+import { listSessions, listStaff } from "@/features/open-play/server/queries";
 import { headingClass, metaClass } from "@/features/open-play/styles";
+import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
 import {
-  AddAdminForm,
   ChangePasswordForm,
   CreateSessionForm,
   DeleteSessionButton,
   EndSessionButton,
+  InviteAdminForm,
   JoinQr,
-  ResetPasswordButton,
+  ResendInviteButton,
 } from "./admin-client";
 
 export const metadata: Metadata = { title: "Officer console" };
-
-type SessionRow = {
-  id: string;
-  code: string;
-  name: string;
-  status: "ACTIVE" | "ENDED";
-  courts: number;
-  players: number;
-};
-
-type StaffRow = {
-  user_id: string;
-  email: string;
-  role: "ADMIN" | "OPERATOR";
-  last_sign_in_at: string | null;
-};
 
 /** One session: the live one (End) or an ended one (Delete, admins only). */
 function SessionCard({ session, canDelete }: { session: SessionRow; canDelete: boolean }) {
@@ -81,15 +68,11 @@ function SignOut({ variant = "ghost" }: { variant?: "ghost" | "outline" }) {
 }
 
 export default async function AdminPage() {
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims) redirect("/admin/login");
-
-  const { data, error } = await supabase.rpc("list_sessions");
-  if (error) {
-    if (error.message !== "not_staff") throw new Error(`list_sessions failed: ${error.message}`);
+  const me = await getIdentity();
+  if (!me) redirect("/admin/login");
+  if (!me.role) {
     // A player (anonymous session) who wandered here just needs to sign in as an officer.
-    if (claims.claims.is_anonymous) redirect("/admin/login");
+    if (me.anonymous) redirect("/admin/login");
     return (
       <CenteredPage eyebrow="Officers" title="Not authorized" description="This account isn't an officer yet. Ask an admin to add you.">
         <SignOut variant="outline" />
@@ -97,17 +80,13 @@ export default async function AdminPage() {
     );
   }
 
-  const h = await headers();
-  const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
-  const sessions = data as SessionRow[];
+  const supabase = await createClient();
+  const sessions = await listSessions(supabase);
   // The database allows one live session at a time (list_sessions is newest first).
   const live = sessions.find((s) => s.status === "ACTIVE");
   const past = sessions.filter((s) => s !== live);
-  const myId = claims.claims.sub;
-  const mustChangePassword = claims.claims.app_metadata?.must_change_password === true;
-  // list_staff is admin-only; an officer just doesn't get the section.
-  const { data: staffData } = await supabase.rpc("list_staff");
-  const staff = staffData as StaffRow[] | null;
+  // The roster is for admins; an officer just doesn't get the section.
+  const staff = me.role === "ADMIN" ? await listStaff(supabase) : null;
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 lg:gap-8 lg:px-8 lg:py-10">
@@ -122,23 +101,9 @@ export default async function AdminPage() {
         <SignOut />
       </header>
 
-      {mustChangePassword && (
-        <Card className="border-signal">
-          <CardHeader>
-            <CardTitle className={headingClass}>Set your own password</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
-              You&apos;re signed in with the shared default password. Choose your own before you do anything else.
-            </p>
-            <ChangePasswordForm />
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardContent className="flex flex-wrap items-center gap-4">
-          <JoinQr url={origin} />
+          <JoinQr url={serverEnv.APP_URL} />
           <div className="flex min-w-40 flex-1 flex-col gap-1">
             <h2 className={headingClass}>Join QR</h2>
             <p className="text-sm text-muted-foreground">
@@ -180,35 +145,39 @@ export default async function AdminPage() {
               <CardContent className="flex flex-wrap items-center gap-4">
                 <div className="flex min-w-48 flex-1 flex-col gap-1">
                   <p className="font-semibold wrap-anywhere">
-                    {m.email}
-                    {m.user_id === myId && <span className="text-muted-foreground"> (you)</span>}
+                    {m.email ?? "(no email)"}
+                    {m.user_id === me.id && <span className="text-muted-foreground"> (you)</span>}
                   </p>
                   <p className={metaClass}>
-                    {m.role.toLowerCase()} · {m.last_sign_in_at ? "has signed in" : "never signed in"}
+                    {m.role.toLowerCase()} · {m.last_sign_in_at ? "has signed in" : "invited, not signed in yet"}
                   </p>
                 </div>
-                {m.user_id !== myId && <ResetPasswordButton userId={m.user_id} />}
+                {!m.last_sign_in_at && m.email && <ResendInviteButton userId={m.user_id} />}
               </CardContent>
             </Card>
           ))}
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-2xl font-extrabold tracking-display uppercase">Add admin</CardTitle>
+              <CardTitle className="font-display text-2xl font-extrabold tracking-display uppercase">Invite an admin</CardTitle>
             </CardHeader>
             <CardContent>
-              <AddAdminForm />
+              <InviteAdminForm />
             </CardContent>
           </Card>
-          {!mustChangePassword && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="font-display text-2xl font-extrabold tracking-display uppercase">Change my password</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ChangePasswordForm />
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-display text-2xl font-extrabold tracking-display uppercase">Change my password</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChangePasswordForm />
+            </CardContent>
+          </Card>
+          <p className="text-xs text-muted-foreground">
+            <Link href="/admin/health" className="underline underline-offset-4">
+              System health
+            </Link>{" "}
+            shows the notification queue, the timers and how the database is coping.
+          </p>
         </section>
       )}
     </main>

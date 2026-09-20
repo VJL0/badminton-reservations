@@ -4,13 +4,14 @@ import { redirect } from "next/navigation";
 import { LocalTime } from "@/components/local-time";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { idSchema } from "@/features/open-play/schemas";
+import { idSchema, type Summary } from "@/features/open-play/schemas";
+import { getIdentity } from "@/features/open-play/server/auth";
+import { getSessionSummary } from "@/features/open-play/server/queries";
 import { headingClass, metaClass } from "@/features/open-play/styles";
 import { formatDuration, formatPercent } from "@/lib/format";
 import { loginUrl } from "@/lib/redirects";
 import { createClient } from "@/lib/supabase/server";
 import { PlayersList } from "./players-list";
-import type { Summary } from "./summary-types";
 
 export const metadata: Metadata = { title: "Session summary" };
 
@@ -37,19 +38,13 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
   const id = idSchema.safeParse((await params).id);
   if (!id.success) redirect("/admin"); // not a session id: the list is the right page
 
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims) redirect(loginUrl(`/admin/sessions/${id.data}`)); // sign in, then come straight back
+  const me = await getIdentity();
+  if (!me) redirect(loginUrl(`/admin/sessions/${id.data}`)); // sign in, then come straight back
+  if (!me.role) redirect("/admin");
 
-  const { data, error } = await supabase.rpc("get_session_summary", {
-    p_session_id: id.data,
-  });
-  if (error) {
-    if (error.message === "not_staff") redirect("/admin");
-    throw new Error(`get_session_summary failed: ${error.message}`);
-  }
-  if (!data) redirect("/admin"); // no such session (deleted or mistyped)
-  const { session, totals, court_use, courts, players, games } = data as Summary;
+  const summary = await getSessionSummary(await createClient(), id.data);
+  if (!summary) redirect("/admin"); // no such session (deleted or mistyped)
+  const { session, totals, court_use, courts, players, games } = summary;
 
   const live = session.status === "ACTIVE";
   const tracked = session.wait_tracked;
@@ -64,7 +59,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
   const latest = games.slice(0, 5);
   const older = games.slice(5);
   const flagCard = (p: Summary["players"][number]) => (
-    <li key={p.player_id} className="rounded-xl bg-signal/10 p-3">
+    <li key={p.participant_id} className="rounded-xl bg-signal/10 p-3">
       <p className="font-semibold">
         <span aria-hidden className="mr-2 text-signal">
           ⚠
