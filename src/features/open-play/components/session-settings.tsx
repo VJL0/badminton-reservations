@@ -21,7 +21,7 @@ const PRESETS: [number, number][] = [
 
 const label = "font-mono text-[11px] uppercase tracking-[0.12em] text-ink-2";
 const select =
-  "h-9 rounded-xl border border-input bg-white px-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-mat disabled:opacity-50";
+  "h-11 rounded-xl border border-input bg-white px-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-mat disabled:opacity-50";
 
 /** Players per side: two dropdowns plus one-tap presets (1v1, 2v2, 1v2, 2v3). */
 function FormatPicker({ a, b, onChange, disabled }: { a: number; b: number; onChange: (a: number, b: number) => void; disabled?: boolean }) {
@@ -32,7 +32,7 @@ function FormatPicker({ a, b, onChange, disabled }: { a: number; b: number; onCh
           <Button
             key={`${x}${y}`}
             type="button"
-            size="sm"
+            className="h-11 px-4"
             variant={a === x && b === y ? "default" : "outline"}
             disabled={disabled}
             onClick={() => onChange(x, y)}
@@ -71,7 +71,7 @@ function CourtRow({ court, only, busy, run }: { court: Snapshot["courts"][number
       <div className="flex flex-col gap-1.5 sm:items-end">
         <div className="flex flex-wrap items-center gap-2">
           <FormatPicker a={a} b={b} onChange={(x, y) => (setA(x), setB(y))} disabled={busy || playing} />
-          <Button type="button" size="sm" disabled={busy || playing || !dirty} onClick={() => run(() => updateCourt(court.id, a, b))}>
+          <Button type="button" className="h-11 px-4" disabled={busy || playing || !dirty} onClick={() => run(() => updateCourt(court.id, a, b))}>
             Apply
           </Button>
           <ConfirmButton
@@ -167,13 +167,14 @@ function SettingsForm({ snapshot, busy, run }: { snapshot: Snapshot; busy: boole
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className={label}>Minutes per game</span>
-          <Input type="number" inputMode="numeric" min={1} max={180} required value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+          <Input type="number" className="h-11" inputMode="numeric" min={1} max={180} required value={minutes} onChange={(e) => setMinutes(e.target.value)} />
           <span className="text-xs text-ink-2">Applies to games that start from now on.</span>
         </label>
         <label className="flex flex-col gap-1.5">
           <span className={label}>Start countdown (seconds)</span>
           <Input
             type="number"
+            className="h-11"
             inputMode="numeric"
             min={0}
             max={300}
@@ -212,7 +213,7 @@ function AddCourt({ sessionId, full, busy, run }: { sessionId: string; full: boo
       <span className={label}>New court</span>
       <div className="flex flex-wrap items-center gap-2">
         <FormatPicker a={a} b={b} onChange={(x, y) => (setA(x), setB(y))} disabled={busy || full} />
-        <Button type="button" size="sm" disabled={busy || full} onClick={() => run(() => addCourt(sessionId, a, b))}>
+        <Button type="button" className="h-11 px-4" disabled={busy || full} onClick={() => run(() => addCourt(sessionId, a, b))}>
           Add court
         </Button>
       </div>

@@ -138,7 +138,10 @@
 
 @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(29 107 85 / 0.5); } 50% { box-shadow: 0 0 0 7px rgb(29 107 85 / 0); } }
 .live-dot { animation: pulse 2s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; }
+  *, ::before, ::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
+}
 
 /* shadcn semantic tokens, mapped to the court-board palette above (single light look). */
 :root {

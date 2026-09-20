@@ -5,7 +5,7 @@ import Link from "next/link";
 import { signOut } from "../actions/admin";
 
 const item =
-  "flex w-full cursor-pointer items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold outline-none data-[highlighted]:bg-ink/10";
+  "flex min-h-11 w-full cursor-pointer items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold outline-none data-[highlighted]:bg-ink/10";
 
 /** Account menu for signed-in staff: the name in the header opens links to the console and sign out. */
 export function StaffMenu({ name, role }: { name: string | null; role: string }) {
@@ -14,7 +14,7 @@ export function StaffMenu({ name, role }: { name: string | null; role: string })
     <Menu.Root>
       <Menu.Trigger
         aria-label={`Staff menu for ${name ?? "you"}`}
-        className="flex cursor-pointer items-center gap-2 rounded-xl p-1 text-right outline-none hover:bg-ink/5 focus-visible:ring-2 focus-visible:ring-mat data-[popup-open]:bg-ink/10 lg:px-2"
+        className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-xl p-1 text-right outline-none hover:bg-ink/5 focus-visible:ring-2 focus-visible:ring-mat data-[popup-open]:bg-ink/10 lg:px-2"
       >
         <span className="hidden flex-col items-end gap-0.5 lg:flex">
           <span className="text-base font-bold">{name}</span>

@@ -12,7 +12,7 @@ export function PlayerSlot({ name, isMe, onRemove }: { name?: string; isMe?: boo
         <Button
           variant="destructive"
           size="icon-xs"
-          className="absolute -right-1.5 -top-1.5 size-5 bg-signal text-white hover:bg-signal/90"
+          className="absolute -right-2 -top-2 size-7 bg-signal text-white after:absolute after:-inset-2 after:content-[''] hover:bg-signal/90 pointer-coarse:size-7"
           onClick={onRemove}
           aria-label={`Remove ${name}`}
         >

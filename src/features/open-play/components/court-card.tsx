@@ -153,7 +153,7 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
             />
             <Button
               variant="outline"
-              className="h-10 border-line/60 bg-transparent text-line hover:bg-line/10 hover:text-line"
+              className="h-12 rounded-2xl px-5 text-[15px] font-semibold border-line/60 bg-transparent text-line hover:bg-line/10 hover:text-line"
               disabled={busy}
               onClick={() => onTogglePause(round.id, !paused)}
             >

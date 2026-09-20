@@ -24,7 +24,7 @@ export const config = {
   matcher: [
     {
       // Everything except static assets and prefetches (per the Next.js CSP guide).
-      source: "/((?!_next/static|_next/image|favicon.ico|icon.svg|robots.txt).*)",
+      source: "/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|robots.txt|manifest.webmanifest|sw.js|icons/|api/push).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },
