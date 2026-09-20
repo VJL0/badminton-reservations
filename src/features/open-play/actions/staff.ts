@@ -26,7 +26,7 @@ const unconfigured: ActionResult = {
   error: "Admin management isn't configured on this server.",
 };
 
-export async function addAdmin(email: string): Promise<ActionResult> {
+async function addAdmin(email: string): Promise<ActionResult> {
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   if (!(await requireAdmin())) return denied;
@@ -77,7 +77,7 @@ export async function resetAdminPassword(userId: string): Promise<ActionResult> 
   return { ok: true };
 }
 
-export async function changeMyPassword(password: string): Promise<ActionResult> {
+async function changeMyPassword(password: string): Promise<ActionResult> {
   const parsed = passwordSchema.safeParse(password);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   if (parsed.data === DEFAULT_PASSWORD) return { ok: false, error: "Pick a password of your own." };

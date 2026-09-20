@@ -8,18 +8,25 @@ shared queue that feeds every court. Not a reservation system — a state machin
 - **Next.js (App Router)** renders the board; Server Actions are thin wrappers over those functions.
 - **Supabase Realtime Broadcast** (private channel `session:<uuid>`) sends `session_changed`; clients
   refetch the snapshot. The message carries no state.
-- **Timers derive from `ends_at`.** Nothing ticks in the DB; "TIME'S UP" is `now >= ends_at`.
-- **UI:** shadcn/ui (Base UI, `maia` preset) + Tailwind v4.
+- **Timers derive from timestamps** (`ends_at`, `start_at`). A `pg_cron` job (every 30 s) ends overdue games; open boards report
+  time-up instantly, and the database checks the clock.
+- **UI:** shadcn/ui (Base UI, `maia` preset) + Tailwind v4, designed phone-first.
 
-## Rules implemented
+## How it works
 
-- One global FIFO queue. Joining always enqueues first; the allocator then places players.
-- Courts are packed: partially filled first, then fullest, then lowest number.
-- The 20-minute (configurable) timer starts when the 4th player arrives.
-- Nothing moves at 00:00. A player on the court, or an officer, presses **End game**; that completes
-  the round and refills the court from the queue in one transaction. Double presses are a no-op.
-- Finished players go idle (`auto_requeue_on_finish` per session requeues them instead).
-- Officers: end game, remove players, pause/resume courts, create/end sessions (admins only).
+- **One FIFO queue.** Joining always enqueues first; the allocator then places players. A player can pick a specific court
+  (they only take that one) and can switch while queued without losing their place.
+- **Courts have formats** (1v1, 2v2, 1v2 ... up to 4 a side) and admins can add, delete or reformat them during a session.
+  Otherwise courts are packed: partially filled first, then fullest, then lowest number.
+- **Games start** when the court is full: immediately, after a countdown, or when someone on the court (or an officer) presses
+  Start, per session setting. Two players are enough to start early.
+- **Games end by themselves** when time is up (session setting, on by default) and the next players step on. Otherwise a player
+  or officer presses **End game**. Double presses are a no-op.
+- **Pause / Play** stops and restarts a running game's clock. Leaving a running game lets it carry on without you.
+- Finished players go idle; `auto_requeue_on_finish` sends them back to the queue for the same court instead.
+- **Officers** remove players and pause games; **admins** also create/end sessions, change settings and courts, and manage admins.
+- **Session summary** (`/admin/sessions/<id>`): waits, fairness flags, court use, per-player breakdowns, game history, CSV export.
+  Every wait is recorded by a trigger (`queue_entries`); nothing calculated is stored.
 - Abuse limits: queue capped per session (`max_queue_size`, default 100); 2 s join throttle.
 
 ## Run locally
@@ -57,7 +64,7 @@ server-only `SUPABASE_SERVICE_ROLE_KEY` (see `.env.example`); set it in Vercel t
 | `pnpm lint:fix` / `pnpm format` | Apply Biome's safe fixes / just format |
 | `pnpm typecheck` / `pnpm build` | TypeScript 7 type check and production build |
 | `pnpm db:test` | pgTAP: allocator, timer, RLS/grants, abuse limits |
-| `pnpm db:concurrency` | 20 simultaneous joins / 5 simultaneous End Game (cleans up after itself) |
+| `pnpm db:concurrency` | 20 simultaneous joins / 5 simultaneous end-game presses (cleans up after itself) |
 | `pnpm db:advisors` | Supabase security + performance linter; fails on warnings |
 | `pnpm db:lint` | `plpgsql_check` over every database function (unused variables, wrong volatility, bad SQL); fails on warnings |
 | `pnpm db:types` | Regenerates `src/lib/supabase/database.types.ts` from the schema. Run after changing a migration; CI fails if it is stale |
@@ -86,6 +93,7 @@ Dashboard settings — these are not in the migrations:
 | Auth → URL Configuration | Site URL = your production domain. |
 | Auth → JWT Keys | Use asymmetric signing keys (default on new projects) so `getClaims()` verifies locally. |
 | Realtime → Settings | **Disable "Allow public access"** so only authorized private channels connect. |
+| Database → Extensions | **Enable `pg_cron`** (the 30-second timer that ends games) and `pg_net` if you use push. |
 | Database → Settings | Enforce SSL; network restrictions if you can. Enable PITR once data matters. |
 | Account | MFA on your Supabase account. |
 
@@ -127,7 +135,7 @@ Skipped by default; the app works without it, and the sound/vibration alert on t
 ### 4. First officer, then smoke test
 
 Create the officer (see above), sign in at `/admin/login`, create a session, print the QR.
-Then on two phones: enter a name, join, End game, rejoin.
+Then on two phones: enter a name, join, let the game run out (or press End game), rejoin.
 
 ### Housekeeping
 
@@ -141,7 +149,7 @@ where is_anonymous is true and created_at < now() - interval '30 days';
 ### Security notes
 
 - All tables have RLS on with an explicit deny-all policy; clients only reach data through the
-  functions in `20260918000002_queue_functions.sql` / `…005_hardening.sql`. New SQL functions get
+  functions in `supabase/migrations` (start with `…0002_queue_functions.sql`). New SQL functions get
   `EXECUTE` for `anon`/`authenticated` by default in Supabase: revoke and grant explicitly, as in
   `20260918000003_rls_grants.sql`.
 - Anonymous sign-in and officer sign-in run **in the browser**, not in Server Actions, so Supabase's

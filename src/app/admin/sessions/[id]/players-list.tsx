@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { LocalTime } from "@/components/local-time";
+import { metaClass } from "@/features/open-play/styles";
 import { formatDuration } from "@/lib/format";
 import type { PlayerStat } from "./summary-types";
 
@@ -32,7 +33,6 @@ const SORTS = {
 } as const satisfies Record<string, Sort>;
 
 const PREVIEW = 8;
-const meta = "font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground";
 
 /** Stacked cards, not a table: a table's columns don't fit a phone. Tap a player for the full breakdown. */
 export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; waitTracked: boolean }) {
@@ -46,7 +46,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
   return (
     <div className="flex flex-col gap-3">
       <label className="flex items-center gap-2 text-sm">
-        <span className={meta}>Sort by</span>
+        <span className={metaClass}>Sort by</span>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as keyof typeof SORTS)}
@@ -82,7 +82,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
                   {p.games} {p.games === 1 ? "game" : "games"} · {formatDuration(p.playing_s)} playing
                   {waitTracked && <> · {formatDuration(p.waiting_s)} waiting</>}
                 </span>
-                <span className={meta}>
+                <span className={metaClass}>
                   <LocalTime iso={p.first_seen} part="time" /> – <LocalTime iso={p.last_seen} part="time" />
                 </span>
               </summary>
@@ -114,7 +114,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className={meta}>{label}</dt>
+      <dt className={metaClass}>{label}</dt>
       <dd className="font-semibold">{value}</dd>
     </div>
   );

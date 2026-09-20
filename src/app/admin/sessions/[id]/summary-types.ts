@@ -1,4 +1,4 @@
-export type Flag = "no_games" | "long_wait";
+type Flag = "no_games" | "long_wait";
 
 export type PlayerStat = {
   player_id: string;
@@ -13,7 +13,7 @@ export type PlayerStat = {
   flags: Flag[];
 };
 
-export type CourtStat = {
+type CourtStat = {
   court_number: number;
   removed: boolean;
   format: string;

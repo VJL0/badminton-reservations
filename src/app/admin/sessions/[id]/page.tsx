@@ -5,6 +5,7 @@ import { LocalTime } from "@/components/local-time";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { idSchema } from "@/features/open-play/schemas";
+import { headingClass, metaClass } from "@/features/open-play/styles";
 import { formatDuration, formatPercent } from "@/lib/format";
 import { loginUrl } from "@/lib/redirects";
 import { createClient } from "@/lib/supabase/server";
@@ -13,16 +14,13 @@ import type { Summary } from "./summary-types";
 
 export const metadata: Metadata = { title: "Session summary" };
 
-const heading = "font-display text-3xl font-extrabold uppercase tracking-[0.03em]";
-const meta = "font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground";
-
 function Stat({ value, label, note }: { value: string; label: string; note?: string }) {
   return (
     <div className="flex flex-col gap-1 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
       <p className="whitespace-nowrap font-display text-4xl font-extrabold leading-none max-[359px]:text-3xl min-[420px]:text-5xl">
         {value}
       </p>
-      <p className={meta}>{label}</p>
+      <p className={metaClass}>{label}</p>
       {note && <p className="text-xs text-muted-foreground">{note}</p>}
     </div>
   );
@@ -83,7 +81,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
   );
   const gameLine = (g: Summary["games"][number]) => (
     <li key={g.id} className="flex flex-col gap-1 py-3">
-      <p className={meta}>
+      <p className={metaClass}>
         Court {g.court_number} · <LocalTime iso={g.started_at} part="time" />
         {g.ended_at ? (
           <>
@@ -110,7 +108,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
             {live ? "Live" : "Ended"}
           </Badge>
         </div>
-        <p className={meta}>
+        <p className={metaClass}>
           <LocalTime iso={session.started_at} />
           {session.ended_at && (
             <>
@@ -142,7 +140,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
 
       <Card>
         <CardHeader>
-          <CardTitle className={heading}>Queue &amp; fairness</CardTitle>
+          <CardTitle className={headingClass}>Queue &amp; fairness</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <dl className="divide-y">
@@ -183,7 +181,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
 
       <Card>
         <CardHeader>
-          <CardTitle className={heading}>Court flow</CardTitle>
+          <CardTitle className={headingClass}>Court flow</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <dl className="divide-y">
@@ -203,7 +201,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
                   <div className="flex items-baseline justify-between gap-3">
                     <p className="font-semibold">
                       Court {c.court_number}{" "}
-                      <span className={meta}>
+                      <span className={metaClass}>
                         {c.format}
                         {c.removed && " · removed"}
                       </span>
@@ -225,7 +223,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
 
       <Card>
         <CardHeader>
-          <CardTitle className={heading}>Players ({players.length})</CardTitle>
+          <CardTitle className={headingClass}>Players ({players.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <PlayersList players={players} waitTracked={tracked} />
@@ -234,7 +232,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
 
       <Card>
         <CardHeader>
-          <CardTitle className={heading}>Game history ({games.length})</CardTitle>
+          <CardTitle className={headingClass}>Game history ({games.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {games.length === 0 && <p className="text-muted-foreground">No games have started yet.</p>}
@@ -253,7 +251,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
 
       <Card>
         <CardHeader>
-          <CardTitle className={heading}>Session settings</CardTitle>
+          <CardTitle className={headingClass}>Session settings</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <dl className="divide-y">

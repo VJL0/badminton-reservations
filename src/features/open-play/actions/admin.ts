@@ -13,7 +13,7 @@ export async function signOut() {
   redirect("/admin/login");
 }
 
-export async function createSession(input: { name: string; courts: number; minutes: number; autoRequeue: boolean }): Promise<ActionResult> {
+async function createSession(input: { name: string; courts: number; minutes: number; autoRequeue: boolean }): Promise<ActionResult> {
   const p = createSessionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: firstIssue(p.error) };
   const res = await callRpc("create_session", {

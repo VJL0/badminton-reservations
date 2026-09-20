@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { signOut } from "@/features/open-play/actions/admin";
 import { ShuttleIcon } from "@/features/open-play/components/shuttle-icon";
+import { headingClass } from "@/features/open-play/styles";
 import { createClient } from "@/lib/supabase/server";
 import { AddAdminForm, ChangePasswordForm, CreateSessionForm, EndSessionButton, ResetPasswordButton, SessionQr } from "./admin-client";
 
@@ -81,7 +82,7 @@ export default async function AdminPage() {
       {mustChangePassword && (
         <Card className="border-signal">
           <CardHeader>
-            <CardTitle className="font-display text-3xl font-extrabold uppercase tracking-[0.03em]">Set your own password</CardTitle>
+            <CardTitle className={headingClass}>Set your own password</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
@@ -94,7 +95,7 @@ export default async function AdminPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-display text-3xl font-extrabold uppercase tracking-[0.03em]">New session</CardTitle>
+          <CardTitle className={headingClass}>New session</CardTitle>
         </CardHeader>
         <CardContent>
           <CreateSessionForm />
@@ -139,7 +140,7 @@ export default async function AdminPage() {
 
       {staff && (
         <section aria-label="Admins" className="flex flex-col gap-3">
-          <h2 className="font-display text-3xl font-extrabold uppercase tracking-[0.03em]">Admins</h2>
+          <h2 className={headingClass}>Admins</h2>
           {staff.map((m) => (
             <Card key={m.user_id}>
               <CardContent className="flex flex-wrap items-center gap-4">
