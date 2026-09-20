@@ -12,8 +12,8 @@ import { addAdminForm, changePasswordForm, resetAdminPassword } from "@/features
 import { ConfirmButton } from "@/features/open-play/components/confirm-button";
 import { QrButton } from "@/features/open-play/components/qr-button";
 
-export function SessionQr({ url, code }: { url: string; code: string }) {
-  return <QrButton url={url} code={code} size={72} />;
+export function JoinQr({ url }: { url: string }) {
+  return <QrButton url={url} size={72} />;
 }
 
 export function EndSessionButton({ sessionId }: { sessionId: string }) {

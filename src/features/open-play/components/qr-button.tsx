@@ -3,14 +3,17 @@
 import { QRCodeSVG } from "qrcode.react";
 import { useRef, useState } from "react";
 
-/** Small QR that opens full-screen-sized on tap, so it can be scanned from across a table. */
-export function QrButton({ url, code, size = 88 }: { url?: string; code: string; size?: number }) {
+/**
+ * Small QR that opens full-screen-sized on tap, so it can be scanned from across a table.
+ * It always points at the site root, which sends players to whichever session is live, so one printed QR serves every night.
+ */
+export function QrButton({ url, size = 88 }: { url?: string; size?: number }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [href, setHref] = useState(url ?? "");
 
   function open() {
     // Resolve the origin on the client so callers don't need to know it.
-    if (!url) setHref(`${window.location.origin}/play/${code}`);
+    if (!url) setHref(window.location.origin);
     dialog.current?.showModal();
   }
 
@@ -19,7 +22,7 @@ export function QrButton({ url, code, size = 88 }: { url?: string; code: string;
       <button
         type="button"
         onClick={open}
-        aria-label={`Show QR code for session ${code}`}
+        aria-label="Show QR code to join"
         className="cursor-zoom-in rounded-xl bg-white p-2 transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2"
       >
         {url ? <QRCodeSVG value={url} size={size} /> : <QrPlaceholder size={size} />}
@@ -31,7 +34,7 @@ export function QrButton({ url, code, size = 88 }: { url?: string; code: string;
         onClick={(e) => e.target === dialog.current && dialog.current?.close()}
         className="m-auto w-[min(92vw,30rem)] rounded-3xl bg-white p-6 text-center text-ink backdrop:bg-black/70"
       >
-        <p className="font-mono text-sm tracking-caps uppercase">Scan to join · {code}</p>
+        <p className="font-mono text-sm tracking-caps uppercase">Scan to join</p>
         {href && <QRCodeSVG value={href} className="mx-auto my-5 h-auto w-full" size={512} />}
         <p className="mb-5 text-sm wrap-anywhere text-ink-2">{href}</p>
         <button

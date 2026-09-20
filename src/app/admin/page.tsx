@@ -16,8 +16,8 @@ import {
   CreateSessionForm,
   DeleteSessionButton,
   EndSessionButton,
+  JoinQr,
   ResetPasswordButton,
-  SessionQr,
 } from "./admin-client";
 
 export const metadata: Metadata = { title: "Officer console" };
@@ -38,14 +38,13 @@ type StaffRow = {
   last_sign_in_at: string | null;
 };
 
-/** One session: the live one (QR, End) or an ended one (Delete, admins only). */
-function SessionCard({ session, origin, canDelete }: { session: SessionRow; origin: string; canDelete: boolean }) {
+/** One session: the live one (End) or an ended one (Delete, admins only). */
+function SessionCard({ session, canDelete }: { session: SessionRow; canDelete: boolean }) {
   const live = session.status === "ACTIVE";
   const linkClass = "inline-flex min-h-11 items-center px-1 underline underline-offset-4";
   return (
     <Card className={live ? "border-mat" : undefined}>
       <CardContent className="flex flex-wrap items-center gap-4">
-        {live && <SessionQr url={`${origin}/play/${session.code}`} code={session.code} />}
         <div className="flex min-w-40 flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-center gap-x-2">
             <h3 className="font-display text-2xl font-extrabold tracking-display wrap-break-word uppercase">{session.name}</h3>
@@ -137,9 +136,21 @@ export default async function AdminPage() {
         </Card>
       )}
 
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-4">
+          <JoinQr url={origin} />
+          <div className="flex min-w-40 flex-1 flex-col gap-1">
+            <h2 className={headingClass}>Join QR</h2>
+            <p className="text-sm text-muted-foreground">
+              Print this once. It is the same every night: players who scan it land on whichever session is live.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
       {live ? (
         <section aria-label="Live session">
-          <SessionCard session={live} origin={origin} canDelete={false} />
+          <SessionCard session={live} canDelete={false} />
         </section>
       ) : (
         <Card>
@@ -156,7 +167,7 @@ export default async function AdminPage() {
         <section aria-label="Past sessions" className="flex flex-col gap-3">
           <h2 className={headingClass}>Past sessions</h2>
           {past.map((s) => (
-            <SessionCard key={s.id} session={s} origin={origin} canDelete={!!staff} />
+            <SessionCard key={s.id} session={s} canDelete={!!staff} />
           ))}
         </section>
       )}

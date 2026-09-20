@@ -160,7 +160,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 lg:gap-6">
-          {session.status === "ACTIVE" && <QrButton code={session.code} size={36} />}
+          {session.status === "ACTIVE" && <QrButton size={36} />}
           <span className="flex items-center gap-2 font-mono text-caption font-medium tracking-caps text-mat lg:text-xs">
             <i className={`live-dot size-2 rounded-full ${connected ? "bg-mat" : "bg-cork"}`} />
             {/* On a phone the dot says it (green / amber); the word is for screen readers and wider screens. */}
