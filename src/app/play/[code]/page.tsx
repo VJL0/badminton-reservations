@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { LiveBoard } from "@/features/open-play/components/live-board";
 import { NameEntry } from "@/features/open-play/components/name-entry";
 import { sessionCodeSchema } from "@/features/open-play/schemas";
@@ -12,21 +12,43 @@ export async function generateMetadata({ params }: PageProps<"/play/[code]">): P
   return { title: code.success ? `Open play ${code.data}` : "Open play" };
 }
 
-export default async function PlayPage({ params }: PageProps<"/play/[code]">) {
+type Supabase = Awaited<ReturnType<typeof createClient>>;
+
+async function liveSessionCode(supabase: Supabase) {
+  const { data } = await supabase.rpc("get_active_session_code");
+  return typeof data === "string" ? data : null;
+}
+
+/** A code that leads nowhere: take the player to tonight's session if there is one, else say so. */
+async function sendToLive(supabase: Supabase, notice: "not-found" | "ended", not: string): Promise<never> {
+  const live = await liveSessionCode(supabase);
+  if (live && live !== not) redirect(`/play/${live}?notice=${notice}`);
+  redirect(notice === "ended" ? "/" : "/?invalid=notfound");
+}
+
+export default async function PlayPage({ params, searchParams }: PageProps<"/play/[code]">) {
+  const supabase = await createClient();
   const parsed = sessionCodeSchema.safeParse((await params).code);
-  if (!parsed.success) notFound();
+  if (!parsed.success) return sendToLive(supabase, "not-found", "");
   const code = parsed.data;
   const nonce = (await headers()).get("x-nonce") ?? undefined;
+  const noticeParam = (await searchParams).notice;
+  const notice = noticeParam === "not-found" || noticeParam === "ended" ? noticeParam : undefined;
 
-  const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims) return <NameEntry sessionCode={code} nonce={nonce} />;
 
   const { data, error } = await supabase.rpc("get_snapshot", { p_code: code });
   if (error) throw new Error(`get_snapshot failed: ${error.message}`); // -> error.tsx, not a misleading 404
-  if (!data) notFound();
+  if (!data) return sendToLive(supabase, "not-found", code);
   const snapshot = data as Snapshot;
   if (!snapshot.me.display_name) return <NameEntry sessionCode={code} nonce={nonce} />;
 
-  return <LiveBoard initial={snapshot} />;
+  // An ended session is a dead end for players: move them on. Officers can still open it to look.
+  if (snapshot.session.status === "ENDED" && !snapshot.me.role) {
+    const live = await liveSessionCode(supabase);
+    if (live && live !== code) redirect(`/play/${live}?notice=ended`);
+  }
+
+  return <LiveBoard initial={snapshot} notice={notice} />;
 }

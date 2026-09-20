@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { setRoundPaused } from "../actions/court-status";
@@ -14,6 +15,7 @@ import { useNow } from "../hooks/use-now";
 import { useAlerts } from "../hooks/use-alerts";
 import { useSessionRealtime } from "../hooks/use-session-realtime";
 import { useWakeLock } from "../hooks/use-wake-lock";
+import { createClient } from "@/lib/supabase/client";
 import { isUpNext, type Snapshot } from "../types";
 import { CourtCard } from "./court-card";
 import { AlertSettings } from "./alert-settings";
@@ -24,7 +26,13 @@ import { Queue } from "./queue";
 import { SessionSettings } from "./session-settings";
 import { ShuttleIcon } from "./shuttle-icon";
 
-export function LiveBoard({ initial }: { initial: Snapshot }) {
+const NOTICES = {
+  "not-found": "That session code wasn't found, so we've taken you to the session that's running now.",
+  ended: "That session has ended. This is the session running now.",
+} as const;
+
+export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: keyof typeof NOTICES }) {
+  const router = useRouter();
   const { snapshot, offsetMs, connected, refresh } = useSessionRealtime(initial);
   const now = useNow(initial.server_now, offsetMs);
   const [error, setError] = useState<string | null>(null);
@@ -53,6 +61,33 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
       );
     return () => timers.forEach(clearTimeout);
   }, [dueRounds, now, refresh]);
+
+  // The URL carried a one-time notice; drop it so a refresh doesn't repeat it.
+  useEffect(() => {
+    if (notice) window.history.replaceState(null, "", window.location.pathname);
+  }, [notice]);
+
+  // The session ended while a player was watching: if another one is live, move them there after a moment
+  // (long enough to read the message). Officers stay put; they may want to look at the final board.
+  const [moving, setMoving] = useState<string | null>(null);
+  const ended = session.status === "ENDED";
+  const isPlayer = me.role === null;
+  useEffect(() => {
+    if (!ended || !isPlayer) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+    void createClient()
+      .rpc("get_active_session_code")
+      .then(({ data }) => {
+        if (cancelled || typeof data !== "string" || data === session.code) return;
+        setMoving(data);
+        timer = setTimeout(() => router.replace(`/play/${data}?notice=ended`), 4000);
+      });
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [ended, isPlayer, session.code, router]);
 
   // Keep the screen on while you're queued or on a court, and nudge you when your turn comes.
   useWakeLock(me.state !== "IDLE" && session.status === "ACTIVE");
@@ -105,6 +140,11 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
         </div>
       </header>
 
+      {(notice || moving) && (
+        <Alert role="status">
+          <AlertDescription>{moving ? "This session has ended. Taking you to the session running now…" : NOTICES[notice!]}</AlertDescription>
+        </Alert>
+      )}
       <PlayerStatus
         snapshot={snapshot}
         now={now}

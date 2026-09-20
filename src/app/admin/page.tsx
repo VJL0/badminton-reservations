@@ -42,6 +42,8 @@ export default async function AdminPage() {
   const { data, error } = await supabase.rpc("list_sessions");
   if (error) {
     if (error.message !== "not_staff") throw new Error(`list_sessions failed: ${error.message}`);
+    // A player (anonymous session) who wandered here just needs to sign in as an officer.
+    if (claims.claims.is_anonymous) redirect("/admin/login");
     return (
       <CenteredPage
         eyebrow="Officers"

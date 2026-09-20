@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import { LocalTime } from "@/components/local-time";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { idSchema } from "@/features/open-play/schemas";
+import { loginUrl } from "@/lib/redirects";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "Session details" };
@@ -31,19 +32,20 @@ const heading = "font-display text-3xl font-extrabold uppercase tracking-[0.03em
 const meta = "font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground";
 
 export default async function SessionDetailsPage({ params }: PageProps<"/admin/sessions/[id]">) {
-  const id = idSchema.safeParse((await params).id);
-  if (!id.success) notFound();
+  const rawId = (await params).id;
+  const id = idSchema.safeParse(rawId);
+  if (!id.success) redirect("/admin"); // not a session id: the list is the right page
 
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims) redirect("/admin/login");
+  if (!claims?.claims) redirect(loginUrl(`/admin/sessions/${id.data}`)); // sign in, then come straight back
 
   const { data, error } = await supabase.rpc("get_session_details", { p_session_id: id.data });
   if (error) {
     if (error.message === "not_staff") redirect("/admin");
     throw new Error(`get_session_details failed: ${error.message}`);
   }
-  if (!data) notFound();
+  if (!data) redirect("/admin"); // no such session (deleted or mistyped)
   const { session, players, rounds } = data as Details;
 
   return (
