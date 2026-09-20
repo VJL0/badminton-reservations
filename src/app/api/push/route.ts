@@ -1,10 +1,9 @@
 import { timingSafeEqual } from "node:crypto";
-import { z } from "zod";
-import { pushConfigured, pushPayloadSchema, sendPush } from "@/lib/push";
+import { drainPushQueue, pushConfigured } from "@/lib/push";
 
-// Called by the database (pg_net) when a player should hear about a change. It is not a public
-// endpoint: every request must carry the shared secret the database was given.
-const bodySchema = pushPayloadSchema.extend({ player_id: z.uuid() });
+// The push worker. The database calls this (pg_net, right after it queues a notification, and pg_cron every 30
+// seconds for anything still waiting) to say "there is work"; the body is ignored. Not a public endpoint: every
+// request must carry the shared secret the database was given. Delivering is idempotent, so a duplicate wake-up is harmless.
 
 function authorized(request: Request) {
   const secret = process.env.PUSH_WEBHOOK_SECRET;
@@ -19,13 +18,8 @@ export async function POST(request: Request) {
   if (!authorized(request)) return new Response(null, { status: 401 });
   if (!pushConfigured()) return new Response(null, { status: 503 });
 
-  const parsed = bodySchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return new Response(null, { status: 400 });
-  const { player_id, ...payload } = parsed.data;
-
   try {
-    const { devices, sent } = await sendPush(player_id, payload);
-    return Response.json({ sent, failed: devices - sent });
+    return Response.json(await drainPushQueue());
   } catch (e) {
     console.error(`[push] ${(e as Error).message}`);
     return new Response(null, { status: 500 });
