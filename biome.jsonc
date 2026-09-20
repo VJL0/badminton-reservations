@@ -1,0 +1,40 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": ["**", "!.next", "!next-env.d.ts", "!src/lib/supabase/database.types.ts", "!supabase", "!public"]
+  },
+  "formatter": { "indentStyle": "space", "indentWidth": 2, "lineWidth": 140 },
+  "assist": { "actions": { "source": { "organizeImports": "on" } } },
+  "css": { "formatter": { "enabled": false }, "parser": { "tailwindDirectives": true } },
+  "linter": {
+    "domains": { "next": "recommended", "react": "recommended", "project": "recommended" },
+    "rules": {
+      "preset": "recommended",
+      // <Switch> and <Input> are the controls; <FieldLabel>/<Label> are labels. Without this Biome sees a label with no input.
+      "a11y": {
+        "noLabelWithoutControl": {
+          "level": "error",
+          "options": { "inputComponents": ["Switch", "Input"], "labelComponents": ["Label", "FieldLabel"] }
+        }
+      },
+      "nursery": {
+        "useReactCompiler": "error",
+        "noFloatingPromises": "error"
+      }
+    }
+  },
+  "overrides": [
+    {
+      // shadcn/ui components are generated code we keep close to upstream, so upstream's style choices stand.
+      "includes": ["src/components/ui/**"],
+      "linter": {
+        "rules": {
+          "a11y": { "useSemanticElements": "off", "noLabelWithoutControl": "off" },
+          "suspicious": { "noDoubleEquals": "off", "noArrayIndexKey": "off" }
+        }
+      }
+    }
+  ]
+}

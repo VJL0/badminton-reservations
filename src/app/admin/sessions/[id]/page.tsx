@@ -19,7 +19,9 @@ const meta = "font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground
 function Stat({ value, label, note }: { value: string; label: string; note?: string }) {
   return (
     <div className="flex flex-col gap-1 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
-      <p className="whitespace-nowrap font-display text-4xl font-extrabold leading-none max-[359px]:text-3xl min-[420px]:text-5xl">{value}</p>
+      <p className="whitespace-nowrap font-display text-4xl font-extrabold leading-none max-[359px]:text-3xl min-[420px]:text-5xl">
+        {value}
+      </p>
       <p className={meta}>{label}</p>
       {note && <p className="text-xs text-muted-foreground">{note}</p>}
     </div>
@@ -43,7 +45,9 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims) redirect(loginUrl(`/admin/sessions/${id.data}`)); // sign in, then come straight back
 
-  const { data, error } = await supabase.rpc("get_session_summary", { p_session_id: id.data });
+  const { data, error } = await supabase.rpc("get_session_summary", {
+    p_session_id: id.data,
+  });
   if (error) {
     if (error.message === "not_staff") redirect("/admin");
     throw new Error(`get_session_summary failed: ${error.message}`);
@@ -56,14 +60,19 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
   // Most serious first: nobody-got-a-game before long waits, then longest wait.
   const flagged = players
     .filter((p) => p.flags.length > 0)
-    .sort((a, b) => Number(b.flags.includes("no_games")) - Number(a.flags.includes("no_games")) || (b.longest_wait_s ?? 0) - (a.longest_wait_s ?? 0));
+    .sort(
+      (a, b) =>
+        Number(b.flags.includes("no_games")) - Number(a.flags.includes("no_games")) || (b.longest_wait_s ?? 0) - (a.longest_wait_s ?? 0),
+    );
   const longWait = Math.max(600, session.game_duration_seconds);
   const latest = games.slice(0, 5);
   const older = games.slice(5);
   const flagCard = (p: Summary["players"][number]) => (
     <li key={p.player_id} className="rounded-xl bg-signal/10 p-3">
       <p className="font-semibold">
-        <span aria-hidden className="mr-2 text-signal">⚠</span>
+        <span aria-hidden className="mr-2 text-signal">
+          ⚠
+        </span>
         {p.name}
       </p>
       <p className="text-sm text-muted-foreground">
@@ -115,19 +124,26 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
       </header>
 
       <section aria-label="Highlights" className="grid grid-cols-2 gap-3">
-        <Stat value={String(totals.players)} label="Players" note={totals.peak_present > 0 ? `${totals.peak_present} here at once at most` : undefined} />
+        <Stat
+          value={String(totals.players)}
+          label="Players"
+          note={totals.peak_present > 0 ? `${totals.peak_present} here at once at most` : undefined}
+        />
         <Stat value={String(totals.games)} label="Games" />
         <Stat value={tracked ? formatDuration(totals.median_wait_s) : "—"} label="Median wait" note="A typical player's wait for a court" />
         <Stat value={tracked ? formatDuration(totals.longest_wait_s) : "—"} label="Longest wait" />
       </section>
       {!tracked && (
         <p className="rounded-2xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-foreground/10">
-          Wait times weren&apos;t recorded for this session (it ran before wait tracking existed), so waits and court-idle figures are left blank.
+          Wait times weren&apos;t recorded for this session (it ran before wait tracking existed), so waits and court-idle figures are left
+          blank.
         </p>
       )}
 
       <Card>
-        <CardHeader><CardTitle className={heading}>Queue &amp; fairness</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className={heading}>Queue &amp; fairness</CardTitle>
+        </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <dl className="divide-y">
             <Line label="Most people waiting at once" value={tracked ? String(totals.peak_queue) : "—"} />
@@ -149,7 +165,8 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
                 </details>
               )}
               <p className="text-xs text-muted-foreground">
-                Flagged: no game after 10+ minutes here, or a wait longer than one full game ({formatDuration(longWait)}). A flag is a prompt to look, not proof the queue failed: they may have gone on a break.
+                Flagged: no game after 10+ minutes here, or a wait longer than one full game ({formatDuration(longWait)}). A flag is a
+                prompt to look, not proof the queue failed: they may have gone on a break.
               </p>
             </div>
           ) : (
@@ -165,7 +182,9 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className={heading}>Court flow</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className={heading}>Court flow</CardTitle>
+        </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <dl className="divide-y">
             <Line label="Courts in use" value={formatPercent(court_use.busy_s, court_use.window_s)} />
@@ -173,7 +192,8 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
             <Line label="Idle while a full game waited" value={tracked ? formatDuration(court_use.idle_backed_s) : "—"} />
           </dl>
           <p className="text-xs text-muted-foreground">
-            Idle court time is only a problem when people are waiting. The last figure counts time a court had no game while enough people to fill it were in the queue.
+            Idle court time is only a problem when people are waiting. The last figure counts time a court had no game while enough people
+            to fill it were in the queue.
           </p>
           <ul className="flex flex-col gap-3">
             {courts.map((c) => {
@@ -182,7 +202,11 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
                 <li key={c.court_number} className="flex flex-col gap-1.5">
                   <div className="flex items-baseline justify-between gap-3">
                     <p className="font-semibold">
-                      Court {c.court_number} <span className={meta}>{c.format}{c.removed && " · removed"}</span>
+                      Court {c.court_number}{" "}
+                      <span className={meta}>
+                        {c.format}
+                        {c.removed && " · removed"}
+                      </span>
                     </p>
                     <p className="font-semibold">{formatPercent(c.busy_s, c.window_s)}</p>
                   </div>
@@ -200,14 +224,18 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className={heading}>Players ({players.length})</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className={heading}>Players ({players.length})</CardTitle>
+        </CardHeader>
         <CardContent>
           <PlayersList players={players} waitTracked={tracked} />
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className={heading}>Game history ({games.length})</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className={heading}>Game history ({games.length})</CardTitle>
+        </CardHeader>
         <CardContent>
           {games.length === 0 && <p className="text-muted-foreground">No games have started yet.</p>}
           <ul className="divide-y">{latest.map(gameLine)}</ul>
@@ -224,15 +252,24 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className={heading}>Session settings</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className={heading}>Session settings</CardTitle>
+        </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <dl className="divide-y">
             <Line label="Game length" value={`${Math.round(session.game_duration_seconds / 60)} minutes`} />
             <Line
               label="Games start"
-              value={session.auto_start ? `Automatically${session.start_delay_seconds ? ` after ${session.start_delay_seconds}s` : ""}` : "When someone presses Start"}
+              value={
+                session.auto_start
+                  ? `Automatically${session.start_delay_seconds ? ` after ${session.start_delay_seconds}s` : ""}`
+                  : "When someone presses Start"
+              }
             />
-            <Line label="After a game" value={session.auto_requeue_on_finish ? "Players re-queue for the same court" : "Players step off"} />
+            <Line
+              label="After a game"
+              value={session.auto_requeue_on_finish ? "Players re-queue for the same court" : "Players step off"}
+            />
             <Line label="Courts" value={String(session.courts)} />
           </dl>
           <a

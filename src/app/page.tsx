@@ -53,7 +53,9 @@ export default async function Home({ searchParams }: PageProps<"/">) {
             />
             {invalid && <FieldError>{notFound ? "No session with that code." : "Enter a valid session code."}</FieldError>}
           </Field>
-          <Button type="submit" className={ctaClass}>Join open play</Button>
+          <Button type="submit" className={ctaClass}>
+            Join open play
+          </Button>
           <p className="text-center text-sm text-muted-foreground">
             Staff?{" "}
             <Link href="/admin/login" className="inline-flex min-h-11 items-center px-2 underline underline-offset-4 hover:text-foreground">

@@ -6,11 +6,26 @@ import { formatDuration } from "@/lib/format";
 import type { PlayerStat } from "./summary-types";
 
 const SORTS = {
-  games: { label: "Games played", cmp: (a: PlayerStat, b: PlayerStat) => b.games - a.games || a.name.localeCompare(b.name) },
-  longest: { label: "Longest wait", cmp: (a: PlayerStat, b: PlayerStat) => (b.longest_wait_s ?? -1) - (a.longest_wait_s ?? -1) },
-  waiting: { label: "Total waiting", cmp: (a: PlayerStat, b: PlayerStat) => b.waiting_s - a.waiting_s },
-  playing: { label: "Time playing", cmp: (a: PlayerStat, b: PlayerStat) => b.playing_s - a.playing_s },
-  name: { label: "Name", cmp: (a: PlayerStat, b: PlayerStat) => a.name.localeCompare(b.name) },
+  games: {
+    label: "Games played",
+    cmp: (a: PlayerStat, b: PlayerStat) => b.games - a.games || a.name.localeCompare(b.name),
+  },
+  longest: {
+    label: "Longest wait",
+    cmp: (a: PlayerStat, b: PlayerStat) => (b.longest_wait_s ?? -1) - (a.longest_wait_s ?? -1),
+  },
+  waiting: {
+    label: "Total waiting",
+    cmp: (a: PlayerStat, b: PlayerStat) => b.waiting_s - a.waiting_s,
+  },
+  playing: {
+    label: "Time playing",
+    cmp: (a: PlayerStat, b: PlayerStat) => b.playing_s - a.playing_s,
+  },
+  name: {
+    label: "Name",
+    cmp: (a: PlayerStat, b: PlayerStat) => a.name.localeCompare(b.name),
+  },
 } as const;
 
 const PREVIEW = 8;
@@ -35,7 +50,9 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
           className="h-11 rounded-xl border border-input bg-white px-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-mat"
         >
           {Object.entries(SORTS).map(([key, s]) => (
-            <option key={key} value={key}>{s.label}</option>
+            <option key={key} value={key}>
+              {s.label}
+            </option>
           ))}
         </select>
       </label>
@@ -48,9 +65,15 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
                 <span className="flex items-center justify-between gap-2">
                   <span className="min-w-0 break-words font-semibold">
                     {p.name}
-                    {p.flags.length > 0 && <span role="img" aria-label="Needs attention" className="ml-2 text-signal">⚠</span>}
+                    {p.flags.length > 0 && (
+                      <span role="img" aria-label="Needs attention" className="ml-2 text-signal">
+                        ⚠
+                      </span>
+                    )}
                   </span>
-                  <span aria-hidden className="text-muted-foreground transition-transform group-open:rotate-180">⌄</span>
+                  <span aria-hidden className="text-muted-foreground transition-transform group-open:rotate-180">
+                    ⌄
+                  </span>
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {p.games} {p.games === 1 ? "game" : "games"} · {formatDuration(p.playing_s)} playing

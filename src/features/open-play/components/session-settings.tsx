@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { addCourt, deleteCourt, updateCourt, updateSessionSettings } from "../actions/session-config";
 import type { ActionResult } from "../actions/rpc";
-import { ConfirmButton } from "./confirm-button";
+import { addCourt, deleteCourt, updateCourt, updateSessionSettings } from "../actions/session-config";
 import { formatLabel, type Snapshot } from "../types";
+import { ConfirmButton } from "./confirm-button";
 
 type Run = (action: () => Promise<ActionResult>) => void;
 
@@ -24,10 +24,21 @@ const select =
   "h-11 rounded-xl border border-input bg-white px-2 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-mat disabled:opacity-50";
 
 /** Players per side: two dropdowns plus one-tap presets (1v1, 2v2, 1v2, 2v3). */
-function FormatPicker({ a, b, onChange, disabled }: { a: number; b: number; onChange: (a: number, b: number) => void; disabled?: boolean }) {
+function FormatPicker({
+  a,
+  b,
+  onChange,
+  disabled,
+}: {
+  a: number;
+  b: number;
+  onChange: (a: number, b: number) => void;
+  disabled?: boolean;
+}) {
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <div className="flex gap-1" role="group" aria-label="Format presets">
+      <fieldset className="m-0 flex min-w-0 gap-1 border-0 p-0">
+        <legend className="sr-only">Format presets</legend>
         {PRESETS.map(([x, y]) => (
           <Button
             key={`${x}${y}`}
@@ -40,14 +51,30 @@ function FormatPicker({ a, b, onChange, disabled }: { a: number; b: number; onCh
             {x}v{y}
           </Button>
         ))}
-      </div>
+      </fieldset>
       <span className="flex items-center gap-1.5">
-        <select aria-label="Players on side A" className={select} value={a} disabled={disabled} onChange={(e) => onChange(Number(e.target.value), b)}>
-          {[1, 2, 3, 4].map((n) => <option key={n}>{n}</option>)}
+        <select
+          aria-label="Players on side A"
+          className={select}
+          value={a}
+          disabled={disabled}
+          onChange={(e) => onChange(Number(e.target.value), b)}
+        >
+          {[1, 2, 3, 4].map((n) => (
+            <option key={n}>{n}</option>
+          ))}
         </select>
         <span className="text-sm font-semibold">v</span>
-        <select aria-label="Players on side B" className={select} value={b} disabled={disabled} onChange={(e) => onChange(a, Number(e.target.value))}>
-          {[1, 2, 3, 4].map((n) => <option key={n}>{n}</option>)}
+        <select
+          aria-label="Players on side B"
+          className={select}
+          value={b}
+          disabled={disabled}
+          onChange={(e) => onChange(a, Number(e.target.value))}
+        >
+          {[1, 2, 3, 4].map((n) => (
+            <option key={n}>{n}</option>
+          ))}
         </select>
       </span>
     </div>
@@ -70,8 +97,21 @@ function CourtRow({ court, only, busy, run }: { court: Snapshot["courts"][number
       </div>
       <div className="flex flex-col gap-1.5 sm:items-end">
         <div className="flex flex-wrap items-center gap-2">
-          <FormatPicker a={a} b={b} onChange={(x, y) => (setA(x), setB(y))} disabled={busy || playing} />
-          <Button type="button" className="h-11 px-4" disabled={busy || playing || !dirty} onClick={() => run(() => updateCourt(court.id, a, b))}>
+          <FormatPicker
+            a={a}
+            b={b}
+            onChange={(x, y) => {
+              setA(x);
+              setB(y);
+            }}
+            disabled={busy || playing}
+          />
+          <Button
+            type="button"
+            className="h-11 px-4"
+            disabled={busy || playing || !dirty}
+            onClick={() => run(() => updateCourt(court.id, a, b))}
+          >
             Apply
           </Button>
           <ConfirmButton
@@ -83,7 +123,11 @@ function CourtRow({ court, only, busy, run }: { court: Snapshot["courts"][number
         </div>
         {playing && <p className="text-xs text-ink-2">A game is running. Change or delete the court once it ends.</p>}
         {only && !playing && <p className="text-xs text-ink-2">A session needs at least one court.</p>}
-        {bumped > 0 && <p className="text-xs text-ink-2">{bumped} waiting {bumped === 1 ? "player goes" : "players go"} back to the queue.</p>}
+        {bumped > 0 && (
+          <p className="text-xs text-ink-2">
+            {bumped} waiting {bumped === 1 ? "player goes" : "players go"} back to the queue.
+          </p>
+        )}
       </div>
     </li>
   );
@@ -95,7 +139,10 @@ export function SessionSettings({ snapshot, busy, run }: { snapshot: Snapshot; b
   const [open, setOpen] = useState(false);
 
   return (
-    <section aria-label="Session settings" className="flex flex-col gap-3 rounded-[24px] border-2 border-ink/15 bg-white px-5 py-4 lg:px-[34px]">
+    <section
+      aria-label="Session settings"
+      className="flex flex-col gap-3 rounded-[24px] border-2 border-ink/15 bg-white px-5 py-4 lg:px-[34px]"
+    >
       <button
         type="button"
         aria-expanded={open}
@@ -106,12 +153,16 @@ export function SessionSettings({ snapshot, busy, run }: { snapshot: Snapshot; b
           <span className="font-display text-2xl font-extrabold uppercase tracking-[0.04em]">Session settings</span>
           <span className={label}>
             {Math.round(session.game_duration_seconds / 60)} min games ·{" "}
-            {session.auto_start ? `auto-start${session.start_delay_seconds ? ` after ${session.start_delay_seconds}s` : ""}` : "manual start"} ·{" "}
-            {session.auto_finish ? "auto-end" : "manual end"} ·{" "}
-            {courts.length} courts{session.auto_requeue_on_finish && " · auto re-queue"}
+            {session.auto_start
+              ? `auto-start${session.start_delay_seconds ? ` after ${session.start_delay_seconds}s` : ""}`
+              : "manual start"}{" "}
+            · {session.auto_finish ? "auto-end" : "manual end"} · {courts.length} courts
+            {session.auto_requeue_on_finish && " · auto re-queue"}
           </span>
         </span>
-        <span aria-hidden className={cn("text-xl transition-transform", open && "rotate-180")}>⌄</span>
+        <span aria-hidden className={cn("text-xl transition-transform", open && "rotate-180")}>
+          ⌄
+        </span>
       </button>
 
       {open && (
@@ -171,7 +222,16 @@ function SettingsForm({ snapshot, busy, run }: { snapshot: Snapshot; busy: boole
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1.5">
           <span className={label}>Minutes per game</span>
-          <Input type="number" className="h-11" inputMode="numeric" min={1} max={180} required value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+          <Input
+            type="number"
+            className="h-11"
+            inputMode="numeric"
+            min={1}
+            max={180}
+            required
+            value={minutes}
+            onChange={(e) => setMinutes(e.target.value)}
+          />
           <span className="text-xs text-ink-2">Applies to games that start from now on.</span>
         </label>
         <label className="flex flex-col gap-1.5">
@@ -211,7 +271,9 @@ function SettingsForm({ snapshot, busy, run }: { snapshot: Snapshot; busy: boole
           <span className="block text-xs font-normal text-ink-2">Players line up again for the same court.</span>
         </span>
       </label>
-      <Button type="submit" className="w-fit" disabled={busy || !dirty}>Save settings</Button>
+      <Button type="submit" className="w-fit" disabled={busy || !dirty}>
+        Save settings
+      </Button>
     </form>
   );
 }
@@ -223,7 +285,15 @@ function AddCourt({ sessionId, full, busy, run }: { sessionId: string; full: boo
     <div className="flex flex-wrap items-center justify-between gap-3 border-t border-ink/10 pt-3">
       <span className={label}>New court</span>
       <div className="flex flex-wrap items-center gap-2">
-        <FormatPicker a={a} b={b} onChange={(x, y) => (setA(x), setB(y))} disabled={busy || full} />
+        <FormatPicker
+          a={a}
+          b={b}
+          onChange={(x, y) => {
+            setA(x);
+            setB(y);
+          }}
+          disabled={busy || full}
+        />
         <Button type="button" className="h-11 px-4" disabled={busy || full} onClick={() => run(() => addCourt(sessionId, a, b))}>
           Add court
         </Button>

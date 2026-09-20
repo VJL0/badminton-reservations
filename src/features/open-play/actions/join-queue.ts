@@ -1,7 +1,7 @@
 "use server";
 
 import { idSchema } from "../schemas";
-import { callRpc, invalid, type ActionResult } from "./rpc";
+import { type ActionResult, callRpc, invalid } from "./rpc";
 
 /** Queue for the session, or for one specific court. Already queued? This just switches courts. */
 export async function joinQueue(sessionId: string, courtId: string | null = null): Promise<ActionResult> {

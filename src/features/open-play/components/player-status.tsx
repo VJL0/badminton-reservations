@@ -1,9 +1,9 @@
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ctaClass } from "../styles";
-import { formatRemaining } from "./court-timer";
+import { cn } from "@/lib/utils";
 import { openCourts, remainingMs } from "../eta";
+import { ctaClass } from "../styles";
 import { isUpNext, type Snapshot } from "../types";
+import { formatRemaining } from "./court-timer";
 
 type Props = {
   snapshot: Snapshot;
@@ -17,7 +17,11 @@ type Props = {
   onTogglePause: (roundId: string, pause: boolean) => void;
 };
 
-type Action = { label: string; run: () => void; kind: "join" | "leave" | "urgent" | "plain" };
+type Action = {
+  label: string;
+  run: () => void;
+  kind: "join" | "leave" | "urgent" | "plain";
+};
 
 /**
  * The one line everybody scans for: where am I? Its buttons live in a bar fixed to the bottom of the
@@ -44,12 +48,19 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
     const r = myCourt.round;
     if (r.status === "FILLING") {
       const need = myCourt.capacity - r.players.length;
-      sub = need === 0
-        ? r.start_at ? "The court is full. The game starts automatically." : "The court is full. Start when you're ready."
-        : `Waiting for ${need} more. ${autoStart ? "The game starts when the court is full." : "Press Start when you're ready."}`;
+      sub =
+        need === 0
+          ? r.start_at
+            ? "The court is full. The game starts automatically."
+            : "The court is full. Start when you're ready."
+          : `Waiting for ${need} more. ${autoStart ? "The game starts when the court is full." : "Press Start when you're ready."}`;
       actions = [{ label: "Leave court", run: onLeave, kind: "leave" }];
       if (r.players.length >= 2 && (!autoStart || r.start_at)) {
-        actions.unshift({ label: r.start_at ? "Start now" : "Start game", run: () => onStart(r.id), kind: "plain" });
+        actions.unshift({
+          label: r.start_at ? "Start now" : "Start game",
+          run: () => onStart(r.id),
+          kind: "plain",
+        });
       }
     } else {
       const rem = remainingMs(r, now);
@@ -67,7 +78,11 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
       actions.unshift(
         timeUp
           ? { label: "End game", run: () => onFinish(r.id), kind: "urgent" }
-          : { label: paused ? "Play" : "Pause", run: () => onTogglePause(r.id, !paused), kind: "plain" },
+          : {
+              label: paused ? "Play" : "Pause",
+              run: () => onTogglePause(r.id, !paused),
+              kind: "plain",
+            },
       );
     }
   } else if (me.state === "QUEUED") {

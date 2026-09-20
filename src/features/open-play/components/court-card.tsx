@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { remainingMs } from "../eta";
-import { formatLabel, type Court, type Snapshot } from "../types";
+import { type Court, formatLabel, type Snapshot } from "../types";
 import { ConfirmButton } from "./confirm-button";
 import { TimerPlate } from "./court-timer";
 import { PlayerSlot } from "./player-slot";
@@ -29,18 +29,32 @@ const CHIP: Record<string, string> = {
   open: "border-sage bg-transparent text-sage",
 };
 
-export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, busy, onQueue, onStart, onFinish, onTogglePause, onRemove }: Props) {
+export function CourtCard({
+  court,
+  me,
+  now,
+  durationSeconds,
+  autoStart,
+  ended,
+  busy,
+  onQueue,
+  onStart,
+  onFinish,
+  onTogglePause,
+  onRemove,
+}: Props) {
   const round = court.round;
   const players = round?.players ?? [];
   const isStaff = me.role !== null;
   const mine = round !== null && me.round_id === round.id;
-  const active = round?.status === "ACTIVE" && !!round.ends_at;
-  const paused = active && !!round!.paused_at;
+  const running = round?.status === "ACTIVE" && round.ends_at ? round : null; // a game with a clock
+  const active = running !== null;
+  const paused = !!running?.paused_at;
   const filling = round?.status === "FILLING";
-  const timeUp = active && !paused && remainingMs(round!, now) <= 0;
+  const timeUp = running !== null && !paused && remainingMs(running, now) <= 0;
   const canControl = active && (isStaff || mine);
   const full = players.length >= court.capacity;
-  const countingDown = filling && !!round!.start_at;
+  const countingDown = filling && !!round?.start_at;
   // A game can start early (or, with auto-start off, at all) once two are on court.
   const canStart = filling && players.length >= 2 && (isStaff || mine);
   // Room to step straight on: open court, no game running, a free place.
@@ -50,21 +64,21 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
   const chip = ended
     ? ["open", "Closed"]
     : timeUp
-    ? ["up", "Time's up"]
-    : paused
-      ? ["open", "Paused"]
-      : active
-        ? ["play", "In play"]
-        : players.length
-          ? ["fill", "Filling"]
-          : ["open", "Open"];
+      ? ["up", "Time's up"]
+      : paused
+        ? ["open", "Paused"]
+        : active
+          ? ["play", "In play"]
+          : players.length
+            ? ["fill", "Filling"]
+            : ["open", "Open"];
   const meta = ended
     ? "This session has ended."
     : active
-    ? paused
-      ? "Game paused. The clock is stopped."
-      : `${Math.round(durationSeconds / 60)}-minute game${players.length < court.capacity ? ` · ${players.length} of ${court.capacity} on court` : ""}`
-    : countingDown
+      ? paused
+        ? "Game paused. The clock is stopped."
+        : `${Math.round(durationSeconds / 60)}-minute game${players.length < court.capacity ? ` · ${players.length} of ${court.capacity} on court` : ""}`
+      : countingDown
         ? "Court is full. The game starts automatically."
         : full
           ? "Court is full. Waiting for someone on it to start."
@@ -77,8 +91,16 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
   let pick: null | { label: string; disabled: boolean } = null;
   if (!ended && me.state !== "PLAYING") {
     if (me.preferred_court_id === court.id) pick = { label: "You're waiting for this court", disabled: true };
-    else if (me.state === "QUEUED") pick = { label: `Switch to court ${court.court_number}`, disabled: false };
-    else pick = { label: `${hasRoom ? "Join" : "Queue for"} court ${court.court_number}`, disabled: false };
+    else if (me.state === "QUEUED")
+      pick = {
+        label: `Switch to court ${court.court_number}`,
+        disabled: false,
+      };
+    else
+      pick = {
+        label: `${hasRoom ? "Join" : "Queue for"} court ${court.court_number}`,
+        disabled: false,
+      };
   }
 
   // Slots 1..a are one side of the net, the rest the other.
@@ -98,7 +120,10 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
   );
 
   return (
-    <section aria-label={`Court ${court.court_number}`} className="mx-auto flex w-full min-w-0 max-w-[520px] flex-col gap-3 lg:max-w-[324px] lg:gap-[18px]">
+    <section
+      aria-label={`Court ${court.court_number}`}
+      className="mx-auto flex w-full min-w-0 max-w-[520px] flex-col gap-3 lg:max-w-[324px] lg:gap-[18px]"
+    >
       <header className="flex items-end justify-between">
         <div className="flex items-end gap-2 lg:gap-3">
           <span className="font-display text-[40px] font-extrabold leading-[0.8] text-line lg:text-[104px]">{court.court_number}</span>

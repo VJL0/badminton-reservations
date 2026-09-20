@@ -24,7 +24,9 @@ export function useSessionRealtime(initial: Snapshot) {
   const refresh = useCallback(async () => {
     const ticket = ++latest.current;
     const sentAt = Date.now();
-    const { data, error } = await createClient().rpc("get_snapshot", { p_code: code });
+    const { data, error } = await createClient().rpc("get_snapshot", {
+      p_code: code,
+    });
     if (error || !data || ticket !== latest.current) return; // stale response
     const midpoint = (sentAt + Date.now()) / 2;
     setSnapshot(data as Snapshot);
@@ -41,7 +43,9 @@ export function useSessionRealtime(initial: Snapshot) {
     };
     void refresh();
 
-    const channel = supabase.channel(`session:${sessionId}`, { config: { private: true } });
+    const channel = supabase.channel(`session:${sessionId}`, {
+      config: { private: true },
+    });
     channel.on("broadcast", { event: "session_changed" }, scheduleRefresh);
     void supabase.realtime.setAuth().then(() => {
       if (cancelled) return;

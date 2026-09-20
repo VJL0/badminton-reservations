@@ -12,6 +12,7 @@ export default function GlobalError({ retry }: { error: Error & { digest?: strin
           <h1 className="text-5xl font-extrabold uppercase leading-[0.9]">Foul ball</h1>
           <p className="text-sm text-muted-foreground">Something went wrong loading the app. Try again.</p>
           <button
+            type="button"
             onClick={() => retry()}
             className="h-14 rounded-full bg-primary px-8 text-xl font-extrabold uppercase text-primary-foreground"
           >

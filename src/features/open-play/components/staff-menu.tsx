@@ -23,7 +23,16 @@ export function StaffMenu({ name, role }: { name: string | null; role: string })
         <span aria-hidden className="flex size-9 items-center justify-center rounded-full bg-ink text-sm font-bold text-white">
           {initial}
         </span>
-        <svg aria-hidden width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.8" className="hidden text-ink-2 lg:block">
+        <svg
+          aria-hidden
+          width="12"
+          height="12"
+          viewBox="0 0 12 12"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className="hidden text-ink-2 lg:block"
+        >
           <path d="m3 4.5 3 3 3-3" />
         </svg>
       </Menu.Trigger>

@@ -3,8 +3,8 @@
 import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
+import { Captcha, type CaptchaHandle, captchaEnabled } from "@/components/captcha";
 import { Button } from "@/components/ui/button";
-import { Captcha, captchaEnabled, type CaptchaHandle } from "@/components/captcha";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ctaClass } from "@/features/open-play/styles";

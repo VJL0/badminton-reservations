@@ -86,8 +86,6 @@
 .court .tokgrid { position: absolute; inset: 0; z-index: 2; display: flex; justify-content: space-between; padding: 0 10px; }
 .court .tokside { display: flex; flex-direction: column; justify-content: space-around; align-items: flex-start; }
 .court .tokside + .tokside { align-items: flex-end; }
-.court .tokside.dense .tok { height: 26px; font-size: 12px; }
-.court .tokside.dense4 .tok { height: 21px; font-size: 11px; }
 
 /* On phones the court is only ~240-320px wide: tokens take whatever the timer plate leaves (cqw = court width). */
 .tok { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: min(96px, calc((100cqw - clamp(84px, 30cqw, 106px)) / 2 - 14px)); height: 32px; padding: 0 6px; border-radius: 16px; background: var(--color-feather); color: var(--color-ink); font-weight: 700; font-size: 13px; }
@@ -99,6 +97,8 @@
 /* Too narrow for the word "Open": show a plus instead of "O…". */
 @container (max-width: 270px) { .tok.empty .nm { font-size: 0; } .tok.empty .nm::before { content: "+"; font-size: 16px; } }
 .tok.empty .av { background: rgb(234 243 238 / 0.14); color: var(--color-line); }
+.court .tokside.dense .tok { height: 26px; font-size: 12px; }
+.court .tokside.dense4 .tok { height: 21px; font-size: 11px; }
 
 .plate { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; width: clamp(84px, 30cqw, 106px); box-sizing: border-box; padding: 8px 4px 7px; border-radius: 12px; background: var(--color-hall); border: 2px solid var(--color-line); display: flex; flex-direction: column; align-items: center; gap: 5px; }
 .plate .digits { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 11cqw, 36px); line-height: 0.85; color: var(--color-line); font-variant-numeric: tabular-nums; }
@@ -129,10 +129,10 @@
   .court .post-b { left: auto; right: -28px; top: calc(50% - 6px); bottom: auto; }
   .court .tokgrid { flex-direction: column; padding: 60px 0; }
   .court .tokside, .court .tokside + .tokside { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; align-content: space-around; gap: 8px 6px; }
-  .court .tokside.dense .tok, .court .tokside.dense4 .tok { height: 44px; font-size: 15px; }
   .tok { width: 112px; height: 44px; padding: 0 10px 0 5px; border-radius: 22px; justify-content: flex-start; font-size: 15px; font-weight: 600; }
   .tok .av { display: grid; }
   .tok.empty { padding: 0 10px 0 3px; }
+  .court .tokside.dense .tok, .court .tokside.dense4 .tok { height: 44px; font-size: 15px; }
   .plate { width: 172px; padding: 11px 12px 10px; border-radius: 16px; gap: 7px; }
   .plate .digits { font-size: 56px; }
   .plate .plabel { font-size: 10.5px; letter-spacing: 0.14em; }
@@ -144,6 +144,7 @@
 .live-dot { animation: pulse 2s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
   .live-dot { animation: none; }
+  /* biome-ignore lint/complexity/noImportantStyles: the standard reduced-motion reset has to beat any authored duration */
   *, ::before, ::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 

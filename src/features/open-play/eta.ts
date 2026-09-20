@@ -1,17 +1,17 @@
-import { type Court, type Snapshot } from "./types";
+import type { Court, Snapshot } from "./types";
 
 type Round = NonNullable<Court["round"]>;
 
 /** Milliseconds left in a running game. A paused game's clock stands still at the moment it paused. */
 export function remainingMs(round: Round, now: number) {
   const at = round.paused_at ? Date.parse(round.paused_at) : now;
-  return Date.parse(round.ends_at!) - at;
+  return (round.ends_at ? Date.parse(round.ends_at) : at) - at; // no end time recorded: nothing left to count
 }
 
 /** Courts a newcomer could be placed on right now, best (fullest) first. */
 export function openCourts(courts: Court[]) {
   return courts
-    .filter((c) => (!c.round || (c.round.status === "FILLING" && c.round.players.length < c.capacity)))
+    .filter((c) => !c.round || (c.round.status === "FILLING" && c.round.players.length < c.capacity))
     .sort((a, b) => (b.round?.players.length ?? 0) - (a.round?.players.length ?? 0) || a.court_number - b.court_number);
 }
 
@@ -35,8 +35,6 @@ export function makeEta(snapshot: Snapshot, now: number) {
     const e = places[Math.min(index, places.length - 1)];
     if (!e) return null;
     const wait = e.t - now;
-    return wait <= 0
-      ? `Court ${e.num} is at time. Waiting on End game.`
-      : `Court ${e.num} frees in about ${Math.ceil(wait / 60000)} min`;
+    return wait <= 0 ? `Court ${e.num} is at time. Waiting on End game.` : `Court ${e.num} frees in about ${Math.ceil(wait / 60000)} min`;
   };
 }

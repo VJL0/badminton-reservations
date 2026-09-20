@@ -22,7 +22,12 @@ type SessionRow = {
   players: number;
 };
 
-type StaffRow = { user_id: string; email: string; role: "ADMIN" | "OPERATOR"; last_sign_in_at: string | null };
+type StaffRow = {
+  user_id: string;
+  email: string;
+  role: "ADMIN" | "OPERATOR";
+  last_sign_in_at: string | null;
+};
 
 function SignOut({ variant = "ghost" }: { variant?: "ghost" | "outline" }) {
   return (
@@ -45,11 +50,7 @@ export default async function AdminPage() {
     // A player (anonymous session) who wandered here just needs to sign in as an officer.
     if (claims.claims.is_anonymous) redirect("/admin/login");
     return (
-      <CenteredPage
-        eyebrow="Officers"
-        title="Not authorized"
-        description="This account isn't an officer yet. Ask an admin to add you."
-      >
+      <CenteredPage eyebrow="Officers" title="Not authorized" description="This account isn't an officer yet. Ask an admin to add you.">
         <SignOut variant="outline" />
       </CenteredPage>
     );
@@ -109,7 +110,10 @@ export default async function AdminPage() {
               <div className="flex min-w-[10rem] flex-1 flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-x-2">
                   <h2 className="break-words font-display text-2xl font-extrabold uppercase tracking-[0.03em]">{s.name}</h2>
-                  <Badge className={s.status === "ACTIVE" ? "bg-mat text-white" : ""} variant={s.status === "ACTIVE" ? "default" : "secondary"}>
+                  <Badge
+                    className={s.status === "ACTIVE" ? "bg-mat text-white" : ""}
+                    variant={s.status === "ACTIVE" ? "default" : "secondary"}
+                  >
                     {s.status === "ACTIVE" ? "Live" : "Ended"}
                   </Badge>
                 </div>

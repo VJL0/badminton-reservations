@@ -8,40 +8,52 @@ export function formatRemaining(ms: number) {
 }
 
 /** The plate on the net. One segment per minute left in the game. */
-export function TimerPlate({ court, now, durationSeconds, ended = false }: { court: Court; now: number; durationSeconds: number; ended?: boolean }) {
+export function TimerPlate({
+  court,
+  now,
+  durationSeconds,
+  ended = false,
+}: {
+  court: Court;
+  now: number;
+  durationSeconds: number;
+  ended?: boolean;
+}) {
   const round = court.round;
   const n = round?.players.length ?? 0;
   const active = round?.status === "ACTIVE" && !!round.ends_at;
   const paused = !!round?.paused_at;
-  const remaining = active ? remainingMs(round!, now) : 0;
+  const remaining = active && round ? remainingMs(round, now) : 0;
   const timeUp = active && !paused && remaining <= 0;
   const countdown = round?.status === "FILLING" && round.start_at ? Math.max(0, Date.parse(round.start_at) - now) : null;
   const segments = Math.ceil(durationSeconds / 60);
   const lit = active ? Math.min(segments, Math.ceil(Math.max(0, remaining) / 60_000)) : 0;
 
   const cls = timeUp ? "up" : active && !paused ? "live" : "wait";
-  const value = ended && !active
-    ? "CLOSED"
-    : active
-    ? formatRemaining(remaining)
-    : countdown !== null
-      ? formatRemaining(countdown)
-      : n
-        ? `${n}/${court.capacity}`
-        : "OPEN";
-  const label = ended && !active
-    ? "SESSION ENDED"
-    : timeUp
-    ? "TIME'S UP"
-    : active
-      ? paused
-        ? "PAUSED"
-        : "REMAINING"
-      : countdown !== null
-        ? "STARTING IN"
-        : n
-          ? `WAITING FOR ${court.capacity - n}`
-          : "NEXT IN LINE";
+  const value =
+    ended && !active
+      ? "CLOSED"
+      : active
+        ? formatRemaining(remaining)
+        : countdown !== null
+          ? formatRemaining(countdown)
+          : n
+            ? `${n}/${court.capacity}`
+            : "OPEN";
+  const label =
+    ended && !active
+      ? "SESSION ENDED"
+      : timeUp
+        ? "TIME'S UP"
+        : active
+          ? paused
+            ? "PAUSED"
+            : "REMAINING"
+          : countdown !== null
+            ? "STARTING IN"
+            : n
+              ? `WAITING FOR ${court.capacity - n}`
+              : "NEXT IN LINE";
 
   return (
     <div className={cn("plate", cls)} role={active ? "timer" : undefined} aria-live="off">
@@ -49,6 +61,7 @@ export function TimerPlate({ court, now, durationSeconds, ended = false }: { cou
       {active && (
         <div className="segs" aria-hidden>
           {Array.from({ length: segments }, (_, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: one fixed segment per minute; position is the identity
             <i key={i} className={cn("seg", i < lit ? (lit <= 2 ? "hot" : "on") : "off")} />
           ))}
         </div>

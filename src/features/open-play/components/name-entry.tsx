@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
-import { Button } from "@/components/ui/button";
-import { Captcha, captchaEnabled, type CaptchaHandle } from "@/components/captcha";
+import { Captcha, type CaptchaHandle, captchaEnabled } from "@/components/captcha";
 import { CenteredPage } from "@/components/page-shell";
+import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
@@ -34,7 +34,9 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
         // Signing in from the browser keeps Supabase's per-IP rate limit per player.
-        const { error: signInError } = await supabase.auth.signInAnonymously({ options: { captchaToken: token } });
+        const { error: signInError } = await supabase.auth.signInAnonymously({
+          options: { captchaToken: token },
+        });
         if (signInError) {
           return fail(
             signInError.status === 429

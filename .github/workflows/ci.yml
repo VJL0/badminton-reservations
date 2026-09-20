@@ -16,7 +16,8 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
+      # Biome: format, lint and import order in one pass; annotates the PR diff. Fails on any error.
+      - run: pnpm biome ci --reporter=github
       - run: pnpm typecheck
       - run: pnpm build
         env:

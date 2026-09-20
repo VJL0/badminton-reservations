@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { createClient } from "@/lib/supabase/client";
 import { setRoundPaused } from "../actions/court-status";
 import { finishRound } from "../actions/finish-round";
 import { joinQueue } from "../actions/join-queue";
@@ -11,21 +12,20 @@ import { removePlayer } from "../actions/remove-player";
 import type { ActionResult } from "../actions/rpc";
 import { startRound } from "../actions/start-round";
 import { makeEta } from "../eta";
-import { useNow } from "../hooks/use-now";
 import { useAlerts } from "../hooks/use-alerts";
+import { useNow } from "../hooks/use-now";
 import { useSessionRealtime } from "../hooks/use-session-realtime";
 import { useWakeLock } from "../hooks/use-wake-lock";
-import { createClient } from "@/lib/supabase/client";
 import { isUpNext, type Snapshot } from "../types";
-import { CourtCard } from "./court-card";
 import { AlertSettings } from "./alert-settings";
-import { StaffMenu } from "./staff-menu";
-import { QrButton } from "./qr-button";
+import { CourtCard } from "./court-card";
 import { PanelBoundary } from "./panel-boundary";
 import { PlayerStatus } from "./player-status";
+import { QrButton } from "./qr-button";
 import { Queue } from "./queue";
 import { SessionSettings } from "./session-settings";
 import { ShuttleIcon } from "./shuttle-icon";
+import { StaffMenu } from "./staff-menu";
 
 const NOTICES = {
   "not-found": "That session code wasn't found, so we've taken you to the session that's running now.",
@@ -53,24 +53,28 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
       const r = c.round;
       if (!r) return [];
       if (r.status === "FILLING" && r.start_at && Date.parse(r.start_at) <= now) return [`start:${r.id}`];
-      if (r.status === "ACTIVE" && r.ends_at && !r.paused_at && session.auto_finish && Date.parse(r.ends_at) <= now) return [`finish:${r.id}`];
+      if (r.status === "ACTIVE" && r.ends_at && !r.paused_at && session.auto_finish && Date.parse(r.ends_at) <= now)
+        return [`finish:${r.id}`];
       return [];
     })
     .join(",");
   useEffect(() => {
-    const timers = due
-      .split(",")
-      .filter(Boolean)
-      .filter((key) => Date.now() - (reported.current.get(key) ?? 0) > 5000) // retry a failed report every 5s
-      .map((key) =>
-        setTimeout(() => {
-          reported.current.set(key, Date.now());
-          const [kind, id] = key.split(":");
-          void (kind === "start" ? startRound(id) : finishRound(id)).then(() => refresh());
-        }, Math.random() * 1000),
-      );
-    return () => timers.forEach(clearTimeout);
-  }, [due, now, refresh]);
+    if (!due) return;
+    const report = () => {
+      for (const key of due.split(",")) {
+        if (Date.now() - (reported.current.get(key) ?? 0) < 4500) continue; // already reported: give it a moment
+        reported.current.set(key, Date.now());
+        const [kind, id] = key.split(":");
+        void (kind === "start" ? startRound(id) : finishRound(id)).then(() => refresh());
+      }
+    };
+    const first = setTimeout(report, Math.random() * 1000); // spread simultaneous reports across phones
+    const retry = setInterval(report, 5000); // a report that failed is sent again
+    return () => {
+      clearTimeout(first);
+      clearInterval(retry);
+    };
+  }, [due, refresh]);
 
   // The URL carried a one-time notice; drop it so a refresh doesn't repeat it.
   useEffect(() => {
@@ -139,11 +143,19 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
     <main className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pb-32 pt-5 lg:gap-7 lg:px-14 lg:pb-16 lg:pt-10">
       <header className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2.5 lg:gap-3.5">
-          <span className="hidden text-ink lg:flex"><ShuttleIcon size={44} /></span>
-          <span className="flex text-ink lg:hidden"><ShuttleIcon size={32} /></span>
+          <span className="hidden text-ink lg:flex">
+            <ShuttleIcon size={44} />
+          </span>
+          <span className="flex text-ink lg:hidden">
+            <ShuttleIcon size={32} />
+          </span>
           <div className="flex min-w-0 flex-col gap-1">
-            <p className="break-words font-display text-2xl font-extrabold uppercase leading-[0.9] tracking-[0.03em] lg:text-[32px]">{session.name}</p>
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-2 lg:text-xs lg:tracking-[0.14em]">Open play · {session.code}</p>
+            <p className="break-words font-display text-2xl font-extrabold uppercase leading-[0.9] tracking-[0.03em] lg:text-[32px]">
+              {session.name}
+            </p>
+            <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-2 lg:text-xs lg:tracking-[0.14em]">
+              Open play · {session.code}
+            </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 lg:gap-6">
@@ -165,7 +177,9 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
 
       {(notice || moving) && (
         <Alert role="status">
-          <AlertDescription>{moving ? "This session has ended. Taking you to the session running now…" : NOTICES[notice!]}</AlertDescription>
+          <AlertDescription>
+            {moving ? "This session has ended. Taking you to the session running now…" : notice ? NOTICES[notice] : null}
+          </AlertDescription>
         </Alert>
       )}
       <PlayerStatus

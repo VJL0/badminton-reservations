@@ -53,7 +53,9 @@ server-only `SUPABASE_SERVICE_ROLE_KEY` (see `.env.example`); set it in Vercel t
 
 | Script | What it does |
 | --- | --- |
-| `pnpm lint` / `pnpm typecheck` / `pnpm build` | Static checks and production build |
+| `pnpm lint` | [Biome](https://biomejs.dev): formatting, lint rules (incl. React Compiler, accessibility, Next.js) and import order. CI runs `biome ci` |
+| `pnpm lint:fix` / `pnpm format` | Apply Biome's safe fixes / just format |
+| `pnpm typecheck` / `pnpm build` | TypeScript 7 type check and production build |
 | `pnpm db:test` | pgTAP: allocator, timer, RLS/grants, abuse limits |
 | `pnpm db:concurrency` | 20 simultaneous joins / 5 simultaneous End Game (cleans up after itself) |
 | `pnpm db:advisors` | Supabase security + performance linter; fails on warnings |

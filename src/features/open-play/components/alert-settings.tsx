@@ -36,7 +36,8 @@ export function AlertSettings({
           <span className="text-sm font-semibold">
             Sound{canVibrate ? " and vibration" : ""} when it&apos;s your turn
             <span className="block text-xs font-normal text-ink-2">
-              While this page is open.{iphone ? " Plays even if your iPhone is on silent." : ""}
+              While this page is open.
+              {iphone ? " Plays even if your iPhone is on silent." : ""}
             </span>
           </span>
         </label>
@@ -52,7 +53,8 @@ export function AlertSettings({
           <p className="text-sm font-semibold">
             Phone notifications
             <span className="block text-xs font-normal text-ink-2">
-              Reach you when the app is closed or your screen is locked.{iphone ? " The buzz on an iPhone comes from the notification." : ""}
+              Reach you when the app is closed or your screen is locked.
+              {iphone ? " The buzz on an iPhone comes from the notification." : ""}
             </span>
           </p>
           <div className="flex flex-wrap gap-2">
@@ -74,14 +76,19 @@ export function AlertSettings({
           </div>
           {push.state === "needs-install" && (
             <p className="text-xs text-ink-2">
-              On iPhone, notifications only work for an app on your Home Screen. Tap Share, then &ldquo;Add to Home Screen&rdquo;, and open it from there.
+              On iPhone, notifications only work for an app on your Home Screen. Tap Share, then &ldquo;Add to Home Screen&rdquo;, and open
+              it from there.
             </p>
           )}
           {push.state === "denied" && (
             <p className="text-xs text-ink-2">Notifications are blocked. Allow them for this site in your browser or phone settings.</p>
           )}
           {push.state === "unsupported" && <p className="text-xs text-ink-2">This browser can&apos;t send notifications.</p>}
-          {push.error && <p role="alert" className="text-xs text-destructive">{push.error}</p>}
+          {push.error && (
+            <p role="alert" className="text-xs text-destructive">
+              {push.error}
+            </p>
+          )}
         </div>
       )}
     </section>

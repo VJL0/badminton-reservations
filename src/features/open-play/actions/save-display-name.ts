@@ -1,7 +1,7 @@
 "use server";
 
 import { nameSchema } from "../schemas";
-import { callRpc, type ActionResult } from "./rpc";
+import { type ActionResult, callRpc } from "./rpc";
 
 // Sign-in itself happens in the browser (Supabase rate-limits per client IP, and every Server
 // Action would otherwise share Vercel's IP). This only stores the validated display name.

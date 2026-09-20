@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { emailSchema, idSchema, passwordSchema } from "../schemas";
 import type { FormState } from "./form-state";
-import { invalid, type ActionResult } from "./rpc";
+import { type ActionResult, invalid } from "./rpc";
 
 // Shared starting password. Every account created or reset with it is flagged must_change_password
 // (app_metadata is writable only with the service role) and the console nags until it's replaced.
@@ -21,7 +21,10 @@ async function requireAdmin(): Promise<{ id: string } | null> {
 }
 
 const denied: ActionResult = { ok: false, error: "Only admins can do that." };
-const unconfigured: ActionResult = { ok: false, error: "Admin management isn't configured on this server." };
+const unconfigured: ActionResult = {
+  ok: false,
+  error: "Admin management isn't configured on this server.",
+};
 
 export async function addAdmin(email: string): Promise<ActionResult> {
   const parsed = emailSchema.safeParse(email);

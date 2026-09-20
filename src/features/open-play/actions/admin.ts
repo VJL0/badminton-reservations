@@ -1,11 +1,11 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSessionSchema, idSchema } from "../schemas";
 import type { FormState } from "./form-state";
-import { callRpc, invalid, type ActionResult } from "./rpc";
+import { type ActionResult, callRpc, invalid } from "./rpc";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -13,12 +13,7 @@ export async function signOut() {
   redirect("/admin/login");
 }
 
-export async function createSession(input: {
-  name: string;
-  courts: number;
-  minutes: number;
-  autoRequeue: boolean;
-}): Promise<ActionResult> {
+export async function createSession(input: { name: string; courts: number; minutes: number; autoRequeue: boolean }): Promise<ActionResult> {
   const p = createSessionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: p.error.issues[0].message };
   const res = await callRpc("create_session", {
@@ -47,6 +42,11 @@ export async function createSessionForm(_prev: FormState, formData: FormData): P
     minutes: String(formData.get("minutes") ?? ""),
     autoRequeue: formData.get("autoRequeue") === "on",
   };
-  const res = await createSession({ name: values.name, courts: Number(values.courts), minutes: Number(values.minutes), autoRequeue: values.autoRequeue });
+  const res = await createSession({
+    name: values.name,
+    courts: Number(values.courts),
+    minutes: Number(values.minutes),
+    autoRequeue: values.autoRequeue,
+  });
   return res.ok ? { ok: true, message: "Session created." } : { ok: false, error: res.error, values };
 }

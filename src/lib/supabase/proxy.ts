@@ -1,5 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import type { Database } from "./database.types";
 
@@ -15,7 +15,9 @@ export async function updateSession(request: NextRequest, requestHeaders: Header
       setAll(list) {
         for (const { name, value } of list) request.cookies.set(name, value);
         requestHeaders.set("cookie", request.headers.get("cookie") ?? "");
-        response = NextResponse.next({ request: { headers: requestHeaders } });
+        response = NextResponse.next({
+          request: { headers: requestHeaders },
+        });
         for (const { name, value, options } of list) response.cookies.set(name, value, options);
       },
     },

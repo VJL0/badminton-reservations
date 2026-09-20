@@ -8,5 +8,9 @@ export function LocalTime({ iso, part = "datetime" }: { iso: string | null; part
     part === "time"
       ? d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
       : d.toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-  return <time dateTime={iso} suppressHydrationWarning>{text}</time>;
+  return (
+    <time dateTime={iso} suppressHydrationWarning>
+      {text}
+    </time>
+  );
 }
