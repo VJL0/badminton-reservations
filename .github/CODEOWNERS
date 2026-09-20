@@ -1,0 +1,2 @@
+# Anything under .github (workflows, Dependabot) changes what runs with repository permissions: the owner reviews it.
+/.github/ @VJL0
