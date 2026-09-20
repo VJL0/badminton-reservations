@@ -1,9 +1,10 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createSessionSchema, idSchema } from "../schemas";
+import type { FormState } from "./form-state";
 import { callRpc, invalid, type ActionResult } from "./rpc";
 
 export async function signOut() {
@@ -26,7 +27,7 @@ export async function createSession(input: {
     p_game_duration_seconds: p.data.minutes * 60,
     p_auto_requeue: p.data.autoRequeue,
   });
-  revalidatePath("/admin");
+  refresh();
   return res;
 }
 
@@ -34,6 +35,18 @@ export async function endSession(sessionId: string): Promise<ActionResult> {
   const id = idSchema.safeParse(sessionId);
   if (!id.success) return invalid;
   const res = await callRpc("end_session", { p_session_id: id.data });
-  revalidatePath("/admin");
+  refresh();
   return res;
+}
+
+/** The "New session" form: works before JavaScript loads, and keeps what was typed if something is wrong. */
+export async function createSessionForm(_prev: FormState, formData: FormData): Promise<FormState> {
+  const values = {
+    name: String(formData.get("name") ?? ""),
+    courts: String(formData.get("courts") ?? ""),
+    minutes: String(formData.get("minutes") ?? ""),
+    autoRequeue: formData.get("autoRequeue") === "on",
+  };
+  const res = await createSession({ name: values.name, courts: Number(values.courts), minutes: Number(values.minutes), autoRequeue: values.autoRequeue });
+  return res.ok ? { ok: true, message: "Session created." } : { ok: false, error: res.error, values };
 }

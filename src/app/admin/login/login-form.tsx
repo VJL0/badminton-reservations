@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import { useRouter } from "next/navigation";
 import { useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const inputClass = "h-14 rounded-xl px-4 text-lg md:text-lg";
 
-export function LoginForm({ nonce, next = "/admin" }: { nonce?: string; next?: string }) {
+export function LoginForm({ nonce, next = "/admin" }: { nonce?: string; next?: Route }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -11,6 +11,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // Links and redirects are checked against the real routes: a typo or a removed page is a compile error.
+  typedRoutes: true,
+  experimental: {
+    // On a dropped connection, hold a navigation or Server Action (join queue, leave, pause...) and run it
+    // once the network is back, instead of failing. See <OfflineBanner>. Experimental in 16.3.
+    useOffline: true,
+  },
   poweredByHeader: false,
   // Dev only: lets a phone on the same Wi-Fi open http://<this-computer's-IP>:3000 (private address ranges).
   allowedDevOrigins: ["10.*.*.*", "192.168.*.*", "172.*.*.*"],

@@ -1,23 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { createSession, endSession } from "@/features/open-play/actions/admin";
+import { createSessionForm, endSession } from "@/features/open-play/actions/admin";
 import { QrButton } from "@/features/open-play/components/qr-button";
-import { addAdmin, changeMyPassword, resetAdminPassword } from "@/features/open-play/actions/staff";
+import { addAdminForm, changePasswordForm, resetAdminPassword } from "@/features/open-play/actions/staff";
 import { ConfirmButton } from "@/features/open-play/components/confirm-button";
+import type { FormState } from "@/features/open-play/actions/form-state";
 
 export function SessionQr({ url, code }: { url: string; code: string }) {
   return <QrButton url={url} code={code} size={72} />;
 }
 
 export function EndSessionButton({ sessionId }: { sessionId: string }) {
-  const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   return (
     <div className="flex flex-col items-end gap-1">
@@ -25,9 +24,9 @@ export function EndSessionButton({ sessionId }: { sessionId: string }) {
         label="End session"
         confirmLabel="Confirm end"
         onConfirm={async () => {
+          // The action refreshes the page itself (next/cache refresh), so the list updates in the same round trip.
           const res = await endSession(sessionId);
           setError(res.ok ? null : res.error);
-          router.refresh();
         }}
       />
       {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
@@ -35,99 +34,80 @@ export function EndSessionButton({ sessionId }: { sessionId: string }) {
   );
 }
 
+/** Shared bottom of every form: the error, or a success note, and the submit button. */
+function FormFooter({ state, pending, label }: { state: FormState; pending: boolean; label: string }) {
+  return (
+    <>
+      {state?.error && (
+        <Alert variant="destructive">
+          <AlertDescription>{state.error}</AlertDescription>
+        </Alert>
+      )}
+      {state?.ok && state.message && (
+        <Alert>
+          <AlertDescription>{state.message}</AlertDescription>
+        </Alert>
+      )}
+      <Button type="submit" disabled={pending} className="w-fit">{label}</Button>
+    </>
+  );
+}
+
+// These are real <form action> forms: they work before JavaScript loads, and React shows the pending state.
+// After an error the fields are refilled from `state.values` (React clears uncontrolled fields after every action).
 export function CreateSessionForm() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [autoRequeue, setAutoRequeue] = useState(false);
-  const [pending, startTransition] = useTransition();
+  const [state, action, pending] = useActionState(createSessionForm, null);
+  const v = state?.values;
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const form = e.currentTarget;
-        const f = new FormData(form);
-        startTransition(async () => {
-          const res = await createSession({
-            name: String(f.get("name")),
-            courts: Number(f.get("courts")),
-            minutes: Number(f.get("minutes")),
-            autoRequeue,
-          });
-          if (res.ok) {
-            form.reset();
-            setAutoRequeue(false);
-            setError(null);
-            router.refresh();
-          } else setError(res.error);
-        });
-      }}
-    >
+    <form action={action}>
       <FieldGroup>
         <div className="grid gap-4 sm:grid-cols-[1fr_7rem_7rem]">
           <Field>
             <FieldLabel htmlFor="session-name">Session name</FieldLabel>
-            <Input id="session-name" name="name" required maxLength={80} placeholder="Friday Open Play" />
+            <Input id="session-name" name="name" required maxLength={80} placeholder="Friday Open Play" defaultValue={String(v?.name ?? "")} />
           </Field>
           <Field>
             <FieldLabel htmlFor="session-courts">Courts</FieldLabel>
-            <Input id="session-courts" name="courts" type="number" min={1} max={30} defaultValue={3} />
+            <Input id="session-courts" name="courts" type="number" min={1} max={30} defaultValue={String(v?.courts ?? 3)} />
           </Field>
           <Field>
             <FieldLabel htmlFor="session-minutes">Minutes per game</FieldLabel>
-            <Input id="session-minutes" name="minutes" type="number" min={1} max={180} defaultValue={20} />
+            <Input id="session-minutes" name="minutes" type="number" min={1} max={180} defaultValue={String(v?.minutes ?? 20)} />
           </Field>
         </div>
         <Field orientation="horizontal">
-          <Switch id="auto-requeue" checked={autoRequeue} onCheckedChange={setAutoRequeue} />
+          <Switch id="auto-requeue" name="autoRequeue" defaultChecked={v?.autoRequeue === true} />
           <FieldLabel htmlFor="auto-requeue">Automatically re-queue players when their game ends</FieldLabel>
         </Field>
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        <Button type="submit" disabled={pending} className="w-fit">Create session</Button>
+        <FormFooter state={state} pending={pending} label="Create session" />
       </FieldGroup>
     </form>
   );
 }
 
 export function AddAdminForm() {
-  const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [state, action, pending] = useActionState(addAdminForm, null);
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const form = e.currentTarget;
-        const email = String(new FormData(form).get("email"));
-        startTransition(async () => {
-          const res = await addAdmin(email);
-          if (res.ok) {
-            form.reset();
-            setError(null);
-            router.refresh();
-          } else setError(res.error);
-        });
-      }}
-    >
+    <form action={action}>
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="admin-email">Email</FieldLabel>
-          <Input id="admin-email" name="email" type="email" required autoComplete="off" placeholder="new.admin@example.com" />
+          <Input
+            id="admin-email"
+            name="email"
+            type="email"
+            required
+            autoComplete="off"
+            placeholder="new.admin@example.com"
+            defaultValue={String(state?.values?.email ?? "")}
+          />
           <p className="text-xs text-muted-foreground">
             They sign in with this email and the default password, and are asked to change it right away.
           </p>
         </Field>
-        {error && (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-        <Button type="submit" disabled={pending} className="w-fit">Add admin</Button>
+        <FormFooter state={state} pending={pending} label="Add admin" />
       </FieldGroup>
     </form>
   );
@@ -159,38 +139,17 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
 }
 
 export function ChangePasswordForm() {
-  const router = useRouter();
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [state, action, pending] = useActionState(changePasswordForm, null);
 
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        const form = e.currentTarget;
-        const password = String(new FormData(form).get("password"));
-        startTransition(async () => {
-          const res = await changeMyPassword(password);
-          if (res.ok) {
-            form.reset();
-            setMessage({ ok: true, text: "Password changed." });
-            router.refresh();
-          } else setMessage({ ok: false, text: res.error });
-        });
-      }}
-    >
+    <form action={action}>
       <FieldGroup>
         <Field>
           <FieldLabel htmlFor="new-password">New password</FieldLabel>
           <Input id="new-password" name="password" type="password" required autoComplete="new-password" minLength={10} />
           <p className="text-xs text-muted-foreground">At least 10 characters with upper case, lower case and a digit.</p>
         </Field>
-        {message && (
-          <Alert variant={message.ok ? "default" : "destructive"}>
-            <AlertDescription>{message.text}</AlertDescription>
-          </Alert>
-        )}
-        <Button type="submit" disabled={pending} className="w-fit">Change password</Button>
+        <FormFooter state={state} pending={pending} label="Change password" />
       </FieldGroup>
     </form>
   );

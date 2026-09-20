@@ -1,9 +1,10 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { emailSchema, idSchema, passwordSchema } from "../schemas";
+import type { FormState } from "./form-state";
 import { invalid, type ActionResult } from "./rpc";
 
 // Shared starting password. Every account created or reset with it is flagged must_change_password
@@ -46,7 +47,7 @@ export async function addAdmin(email: string): Promise<ActionResult> {
     await admin.auth.admin.deleteUser(data.user.id); // don't leave an orphan login behind
     return { ok: false, error: "Couldn't create the account." };
   }
-  revalidatePath("/admin");
+  refresh();
   return { ok: true };
 }
 
@@ -90,6 +91,17 @@ export async function changeMyPassword(password: string): Promise<ActionResult> 
     });
     await supabase.auth.refreshSession(); // new JWT without the flag
   }
-  revalidatePath("/admin");
+  refresh();
   return { ok: true };
+}
+
+export async function addAdminForm(_prev: FormState, formData: FormData): Promise<FormState> {
+  const email = String(formData.get("email") ?? "");
+  const res = await addAdmin(email);
+  return res.ok ? { ok: true, message: "Admin added." } : { ok: false, error: res.error, values: { email } };
+}
+
+export async function changePasswordForm(_prev: FormState, formData: FormData): Promise<FormState> {
+  const res = await changeMyPassword(String(formData.get("password") ?? ""));
+  return res.ok ? { ok: true, message: "Password changed." } : { ok: false, error: res.error }; // never echo a password back
 }

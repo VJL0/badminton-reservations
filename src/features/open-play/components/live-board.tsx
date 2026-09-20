@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { setRoundPaused } from "../actions/court-status";
 import { finishRound } from "../actions/finish-round";
@@ -21,6 +21,7 @@ import { CourtCard } from "./court-card";
 import { AlertSettings } from "./alert-settings";
 import { StaffMenu } from "./staff-menu";
 import { QrButton } from "./qr-button";
+import { PanelBoundary } from "./panel-boundary";
 import { PlayerStatus } from "./player-status";
 import { Queue } from "./queue";
 import { SessionSettings } from "./session-settings";
@@ -112,13 +113,18 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   const last = useRef<{ playing: boolean; next: boolean } | null>(null);
   const playing = me.state === "PLAYING";
   const upNext = isUpNext(me);
-  useEffect(() => {
+  // An Effect Event always sees the latest `alerts` and `pending` without making the effect re-run for them:
+  // the effect below should fire when *your turn changes*, not on every render.
+  const onTurnChange = useEffectEvent((playingNow: boolean, upNextNow: boolean) => {
     const prev = last.current;
-    last.current = { playing, next: upNext };
+    last.current = { playing: playingNow, next: upNextNow };
     if (!prev || pending) return; // first look, or the change is the player's own tap
-    if (playing && !prev.playing) alerts.notify("court");
-    else if (upNext && !prev.next) alerts.notify("next");
-  }, [playing, upNext, pending, alerts]);
+    if (playingNow && !prev.playing) alerts.notify("court");
+    else if (upNextNow && !prev.next) alerts.notify("next");
+  });
+  useEffect(() => {
+    onTurnChange(playing, upNext);
+  }, [playing, upNext]);
 
   function run(action: () => Promise<ActionResult>) {
     setError(null);
@@ -173,8 +179,16 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         onFinish={(roundId) => run(() => finishRound(roundId))}
         onTogglePause={(roundId, pause) => run(() => setRoundPaused(roundId, pause))}
       />
-      {session.status === "ACTIVE" && <AlertSettings sound={alerts.enabled} onSound={alerts.set} onTry={alerts.preview} canVibrate={alerts.canVibrate} />}
-      {me.role === "ADMIN" && session.status === "ACTIVE" && <SessionSettings snapshot={snapshot} busy={pending} run={run} />}
+      {session.status === "ACTIVE" && (
+        <PanelBoundary label="Alerts">
+          <AlertSettings sound={alerts.enabled} onSound={alerts.set} onTry={alerts.preview} canVibrate={alerts.canVibrate} />
+        </PanelBoundary>
+      )}
+      {me.role === "ADMIN" && session.status === "ACTIVE" && (
+        <PanelBoundary label="Session settings">
+          <SessionSettings snapshot={snapshot} busy={pending} run={run} />
+        </PanelBoundary>
+      )}
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -209,7 +223,11 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         </div>
       </section>
 
-      {session.status === "ACTIVE" && <Queue queue={queue} me={me} eta={eta} onRemove={(playerId) => run(() => removePlayer(session.id, playerId))} />}
+      {session.status === "ACTIVE" && (
+        <PanelBoundary label="The queue">
+          <Queue queue={queue} me={me} eta={eta} onRemove={(playerId) => run(() => removePlayer(session.id, playerId))} />
+        </PanelBoundary>
+      )}
     </main>
   );
 }

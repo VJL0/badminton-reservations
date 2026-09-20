@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Big_Shoulders, DM_Mono, Instrument_Sans } from "next/font/google";
 import "./globals.css";
+import { OfflineBanner } from "@/components/offline-banner";
 import { cn } from "@/lib/utils";
 
 // No fallback-metrics data exists for Big Shoulders, so skip the auto-generated fallback (it only logs a build warning).
@@ -22,7 +23,10 @@ export const viewport: Viewport = { width: "device-width", initialScale: 1, view
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={cn("h-full", "antialiased", display.variable, mono.variable, "font-sans", sans.variable)}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <OfflineBanner />
+        {children}
+      </body>
     </html>
   );
 }
