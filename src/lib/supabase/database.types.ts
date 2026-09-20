@@ -476,6 +476,7 @@ export type Database = {
         Returns: string
       }
       delete_court: { Args: { p_court_id: string }; Returns: undefined }
+      delete_session: { Args: { p_session_id: string }; Returns: undefined }
       delete_push_subscription: {
         Args: { p_endpoint: string }
         Returns: undefined

@@ -10,7 +10,15 @@ import { signOut } from "@/features/open-play/actions/admin";
 import { ShuttleIcon } from "@/features/open-play/components/shuttle-icon";
 import { headingClass } from "@/features/open-play/styles";
 import { createClient } from "@/lib/supabase/server";
-import { AddAdminForm, ChangePasswordForm, CreateSessionForm, EndSessionButton, ResetPasswordButton, SessionQr } from "./admin-client";
+import {
+  AddAdminForm,
+  ChangePasswordForm,
+  CreateSessionForm,
+  DeleteSessionButton,
+  EndSessionButton,
+  ResetPasswordButton,
+  SessionQr,
+} from "./admin-client";
 
 export const metadata: Metadata = { title: "Officer console" };
 
@@ -133,6 +141,7 @@ export default async function AdminPage() {
                 </nav>
               </div>
               {s.status === "ACTIVE" && <EndSessionButton sessionId={s.id} />}
+              {s.status !== "ACTIVE" && staff && <DeleteSessionButton sessionId={s.id} />}
             </CardContent>
           </Card>
         ))}

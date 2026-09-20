@@ -34,6 +34,14 @@ export async function endSession(sessionId: string): Promise<ActionResult> {
   return res;
 }
 
+export async function deleteSession(sessionId: string): Promise<ActionResult> {
+  const id = idSchema.safeParse(sessionId);
+  if (!id.success) return invalid;
+  const res = await callRpc("delete_session", { p_session_id: id.data });
+  refresh();
+  return res;
+}
+
 /** The "New session" form: works before JavaScript loads, and keeps what was typed if something is wrong. */
 export async function createSessionForm(_prev: FormState, formData: FormData): Promise<FormState> {
   const values = {
