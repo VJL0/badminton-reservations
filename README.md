@@ -14,6 +14,8 @@ shared queue that feeds every court. Not a reservation system — a state machin
 
 ## How it works
 
+- **One session at a time.** The poster's QR points at `/`, which sends players to whichever session is live. The database
+  refuses a second live session (`already_active`); end tonight's before starting the next.
 - **One FIFO queue.** Joining always enqueues first; the allocator then places players. A player can pick a specific court
   (they only take that one) and can switch while queued without losing their place.
 - **Courts have formats** (1v1, 2v2, 1v2 ... up to 4 a side) and admins can add, delete or reformat them during a session.
@@ -24,7 +26,7 @@ shared queue that feeds every court. Not a reservation system — a state machin
   or officer presses **End game**. Double presses are a no-op.
 - **Pause / Play** stops and restarts a running game's clock. Leaving a running game lets it carry on without you.
 - Finished players go idle; `auto_requeue_on_finish` sends them back to the queue for the same court instead.
-- **Officers** remove players and pause games; **admins** also create/end sessions, change settings and courts, and manage admins.
+- **Officers** remove players and pause games; **admins** also start/end sessions, change settings and courts, and manage admins.
 - **Session summary** (`/admin/sessions/<id>`): waits, fairness flags, court use, per-player breakdowns, game history, CSV export.
   Every wait is recorded by a trigger (`queue_entries`); nothing calculated is stored.
 - Abuse limits: queue capped per session (`max_queue_size`, default 100); 2 s join throttle.
@@ -136,7 +138,7 @@ Skipped by default; the app works without it, and the sound/vibration alert on t
 
 ### 4. First officer, then smoke test
 
-Create the officer (see above), sign in at `/admin/login`, create a session, print the QR.
+Create the officer (see above), sign in at `/admin/login`, start a session, print the QR (it stays valid for every future session).
 Then on two phones: enter a name, join, let the game run out (or press End game), rejoin.
 
 ### Housekeeping

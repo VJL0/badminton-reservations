@@ -414,6 +414,7 @@ export type Database = {
     Functions: {
       _allocate: { Args: { p_session_id: string }; Returns: undefined }
       _broadcast: { Args: { p_session_id: string }; Returns: undefined }
+      _end_session: { Args: { p_session_id: string }; Returns: undefined }
       _finish_overdue_rounds: { Args: never; Returns: number }
       _finish_round: { Args: { p_round_id: string }; Returns: undefined }
       _leave: {

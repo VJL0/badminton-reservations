@@ -1,5 +1,5 @@
 begin;
-select plan(110);
+select plan(118);
 
 create schema tests;
 -- Run SQL as an authenticated user, then hand the role back (so pgTAP itself
@@ -24,6 +24,10 @@ begin
 end $$;
 create function tests.uid(n int) returns uuid language sql immutable as $$
   select ('00000000-0000-0000-0000-' || lpad(n::text, 12, '0'))::uuid $$;
+
+-- Only one session may be live: the sections below each start their own, so close whatever is live first.
+create function tests.end_live() returns void language sql as $$
+  update public.open_play_sessions set status = 'ENDED', ended_at = now() where status = 'ACTIVE' $$;
 
 -- 24 players (1..24), admin (100), operator (101)
 insert into auth.users (id) select tests.uid(n) from generate_series(1, 24) n;
@@ -104,6 +108,7 @@ select tests.call(tests.uid(17), format('select public.leave_queue(%L)', (select
 select is((select state::text from public.session_players where player_id = tests.uid(17)), 'IDLE', 'leaving the queue → IDLE');
 
 -- ---------- deleting a court
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Delete', 2, 600, 'DELETE')$$);
 create temp table t_p as select id from public.open_play_sessions where code = 'DELETE';
 create temp table t_pc as select id, court_number from public.courts where session_id = (select id from t_p);
@@ -129,6 +134,7 @@ select throws_ok($$ insert into public.rounds (session_id, court_id)
   '23505', null, 'DB refuses a second live round on a court');
 
 -- ---------- abuse limits
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Cap', 1, 600, 'CAPS')$$);
 create temp table t_k as select id from public.open_play_sessions where code = 'CAPS';
 update public.open_play_sessions set max_queue_size = 1 where id = (select id from t_k);
@@ -144,6 +150,7 @@ select is((select count(*)::int from pg_policies where schemaname = 'public' and
           'every table has an explicit deny policy');
 
 -- ---------- choosing a court (queue for a specific court)
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Pick', 3, 600, 'PICK')$$);
 create temp table t_pk as select id from public.open_play_sessions where code = 'PICK';
 create temp table t_pkc as select id, court_number from public.courts where session_id = (select id from t_pk);
@@ -181,6 +188,7 @@ select is((select c.court_number from public.round_players rp join public.rounds
           'the picker gets court 3 when it frees');
 
 -- ---------- pausing freezes a running game
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Freeze', 1, 600, 'FREEZE')$$);
 create temp table t_fz as select id from public.open_play_sessions where code = 'FREEZE';
 
@@ -210,6 +218,7 @@ select is((select count(*)::int from public.rounds where session_id = (select id
           'the game closes once the last player leaves');
 
 -- ---------- auto re-queue lines players up for the same court
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Again', 2, 600, 'AGAIN', true)$$);
 create temp table t_ag as select id from public.open_play_sessions where code = 'AGAIN';
 create temp table t_agc as select id, court_number from public.courts where session_id = (select id from t_ag);
@@ -237,6 +246,7 @@ select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select 
   'game_in_progress', 'cannot reformat a court mid-game');
 
 -- ---------- manual start and countdown
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Manual', 1, 600, 'MANUAL')$$);
 create temp table t_mn as select id from public.open_play_sessions where code = 'MANUAL';
 select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, false, 0, true)', (select id from t_mn)));
@@ -280,6 +290,7 @@ select is((select status::text from public.rounds where session_id = (select id 
           'with auto-start back on, the 4th arrival starts the game');
 
 -- ---------- queue history is recorded by the database
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Track', 1, 600, 'TRACK')$$);
 create temp table t_tr as select id from public.open_play_sessions where code = 'TRACK';
 select tests.join(tests.uid(n), (select id from t_tr)) from generate_series(1, 4) n;
@@ -308,6 +319,7 @@ select is((select outcome::text from public.queue_entries where session_id = (se
 select is((select count(*)::int from public.queue_entries where session_id = (select id from t_tr) and ended_at is null), 0, 'no wait is left open after the session ends');
 
 -- ---------- session summary numbers (hand-built timeline so every figure is checkable)
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Summary', 1, 1200, 'SUMM')$$);
 create temp table t_su as select id from public.open_play_sessions where code = 'SUMM';
 update public.open_play_sessions set started_at = '2026-01-01 20:00+00', ended_at = '2026-01-01 22:00+00', status = 'ENDED'
@@ -366,6 +378,7 @@ select is((select (j -> 'court_use' ->> 'idle_backed_s')::int from t_sum), 300, 
 -- ---------- push notifications
 delete from vault.secrets where name in ('push_url', 'push_secret');  -- a dev database may already be configured; this rolls back
 select vault.create_secret('http://localhost:3000/api/push', 'push_url'), vault.create_secret('s3cret', 'push_secret');
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Push', 1, 600, 'PUSHIT')$$);
 create temp table t_ps as select id from public.open_play_sessions where code = 'PUSHIT';
 select throws_ok(format('select tests.call(tests.uid(1), %L)', $$select public.save_push_subscription('http://insecure.example/x', 'k', 'a')$$),
@@ -392,6 +405,7 @@ select ok(exists (select 1 from net.http_request_queue
           'moving into the next four is pushed');
 
 -- ---------- games end by themselves
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Auto end', 1, 600, 'AUTOFIN')$$);
 create temp table t_af as select id from public.open_play_sessions where code = 'AUTOFIN';
 select tests.join(tests.uid(n), (select id from t_af)) from generate_series(1, 8) n;   -- 4 playing, 4 waiting
@@ -431,6 +445,7 @@ select ok((select count(*) from realtime.messages where event = 'session_changed
 
 -- ---------- deleting a session
 create temp table t_del as select id from public.open_play_sessions where code = 'FRIDAY';
+select tests.end_live();
 select tests.call(tests.uid(100), $$select public.create_session('Doomed', 1, 1200, 'DOOMED')$$);
 create temp table t_doomed as select id from public.open_play_sessions where code = 'DOOMED';
 select throws_ok(format('select tests.call(tests.uid(100), $q$select public.delete_session(%L)$q$)', (select id from t_doomed)), 'session_active', 'a live session cannot be deleted');
@@ -439,6 +454,25 @@ select throws_ok(format('select tests.call(tests.uid(101), $q$select public.dele
 select tests.call(tests.uid(100), format('select public.delete_session(%L)', (select id from t_doomed)));
 select is((select count(*)::int from public.open_play_sessions where code = 'DOOMED'), 0, 'an ended session can be deleted');
 select is((select count(*)::int from public.courts where session_id = (select id from t_doomed)), 0, 'its courts go with it');
+
+-- ---------- one live session at a time
+select tests.end_live();
+select tests.call(tests.uid(100), $$select public.create_session('Live', 1, 600, 'LIVE1')$$);
+select throws_ok($$ select tests.call(tests.uid(100), $q$select public.create_session('Second', 1, 600, 'LIVE2')$q$) $$,
+  'already_active', 'a second live session is refused');
+select is((select count(*)::int from public.open_play_sessions where status = 'ACTIVE'), 1, 'only one session is live');
+select is((select count(*)::int from public.open_play_sessions where code = 'LIVE2'), 0, 'the refused session leaves nothing behind');
+select throws_ok($$ insert into public.open_play_sessions (code, name) values ('LIVE3', 'Direct') $$,
+  '23505', null, 'the DB refuses a second live session even without create_session');
+select is((select tests.snapshot(tests.uid(1), 'LIVE1') -> 'session' ->> 'code'), 'LIVE1', 'the live session is readable by players');
+select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from public.open_play_sessions where code = 'LIVE1')));
+select lives_ok($$ select tests.call(tests.uid(100), $q$select public.create_session('Next', 1, 600, 'LIVE2')$q$) $$,
+  'a new session can start once the last one ends');
+select throws_ok($$ select tests.call(tests.uid(100), $q$select public.create_session('Clash', 1, 600, 'LIVE1')$q$) $$,
+  'already_active', 'a live session blocks creating another, whatever the code');
+select tests.end_live();
+select throws_ok($$ select tests.call(tests.uid(100), $q$select public.create_session('Clash', 1, 600, 'LIVE1')$q$) $$,
+  '23505', null, 'a code already in use is not reported as a live session');
 
 select * from finish();
 rollback;

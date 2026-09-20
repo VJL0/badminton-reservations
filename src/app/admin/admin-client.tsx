@@ -114,7 +114,7 @@ export function CreateSessionForm() {
           <Switch id="auto-requeue" name="autoRequeue" defaultChecked={v?.autoRequeue === true} />
           <FieldLabel htmlFor="auto-requeue">Automatically re-queue players when their game ends</FieldLabel>
         </Field>
-        <FormFooter state={state} pending={pending} label="Create session" />
+        <FormFooter state={state} pending={pending} label="Start session" />
       </FieldGroup>
     </form>
   );

@@ -37,7 +37,22 @@ try {
   await pool.query("insert into public.staff (user_id, role) values ($1, 'ADMIN') on conflict do nothing", [ADMIN]);
   await Promise.all(Array.from({ length: PLAYERS }, (_, i) => asUser(uid(i + 1), "select public.set_display_name($1)", [`P${i + 1}`])));
   await asUser(ADMIN, "select public.set_display_name('Admin')");
-  sessionId = (await asUser(ADMIN, "select public.create_session('Concurrency', 3, 1200, $1) as id", [code])).rows[0].id;
+  assert.equal(
+    (await one("select count(*)::int n from public.open_play_sessions where status = 'ACTIVE'")).n,
+    0,
+    "a session is live: end it first, only one can run at a time",
+  );
+
+  // 5 simultaneous "create session" calls -> exactly one wins, the rest are told a session is already live
+  const created = await Promise.allSettled(
+    Array.from({ length: 5 }, (_, i) =>
+      asUser(ADMIN, "select public.create_session('Concurrency', 3, 1200, $1) as id", [i === 0 ? code : `${code}${i}`]),
+    ),
+  );
+  const won = created.filter((r) => r.status === "fulfilled");
+  assert.equal(won.length, 1);
+  assert.ok(created.filter((r) => r.status === "rejected").every((r) => r.reason.message === "already_active"));
+  sessionId = won[0].value.rows[0].id;
 
   // 20 simultaneous joins
   await Promise.all(Array.from({ length: PLAYERS }, (_, i) => asUser(uid(i + 1), "select public.join_queue($1)", [sessionId])));

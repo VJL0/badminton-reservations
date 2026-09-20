@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { signOut } from "@/features/open-play/actions/admin";
 import { ShuttleIcon } from "@/features/open-play/components/shuttle-icon";
-import { headingClass } from "@/features/open-play/styles";
+import { headingClass, metaClass } from "@/features/open-play/styles";
 import { createClient } from "@/lib/supabase/server";
 import {
   AddAdminForm,
@@ -37,6 +37,39 @@ type StaffRow = {
   role: "ADMIN" | "OPERATOR";
   last_sign_in_at: string | null;
 };
+
+/** One session: the live one (QR, End) or an ended one (Delete, admins only). */
+function SessionCard({ session, origin, canDelete }: { session: SessionRow; origin: string; canDelete: boolean }) {
+  const live = session.status === "ACTIVE";
+  const linkClass = "inline-flex min-h-11 items-center px-1 underline underline-offset-4";
+  return (
+    <Card className={live ? "border-mat" : undefined}>
+      <CardContent className="flex flex-wrap items-center gap-4">
+        {live && <SessionQr url={`${origin}/play/${session.code}`} code={session.code} />}
+        <div className="flex min-w-40 flex-1 flex-col gap-1">
+          <div className="flex flex-wrap items-center gap-x-2">
+            <h3 className="font-display text-2xl font-extrabold tracking-display wrap-break-word uppercase">{session.name}</h3>
+            {live && <Badge className="bg-mat text-white">Live</Badge>}
+          </div>
+          <p className={metaClass}>
+            {session.courts} courts · {session.players} players
+          </p>
+          <nav aria-label={`${session.name} links`} className="-mx-1 flex flex-wrap font-mono text-xs tracking-meta uppercase">
+            {live && (
+              <a className={linkClass} href={`/play/${session.code}`}>
+                Live board &amp; settings
+              </a>
+            )}
+            <Link className={linkClass} href={`/admin/sessions/${session.id}`}>
+              Details
+            </Link>
+          </nav>
+        </div>
+        {live ? <EndSessionButton sessionId={session.id} /> : canDelete && <DeleteSessionButton sessionId={session.id} />}
+      </CardContent>
+    </Card>
+  );
+}
 
 function SignOut({ variant = "ghost" }: { variant?: "ghost" | "outline" }) {
   return (
@@ -68,6 +101,9 @@ export default async function AdminPage() {
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
   const sessions = data as SessionRow[];
+  // The database allows one live session at a time (list_sessions is newest first).
+  const live = sessions.find((s) => s.status === "ACTIVE");
+  const past = sessions.filter((s) => s !== live);
   const myId = claims.claims.sub;
   const mustChangePassword = claims.claims.app_metadata?.must_change_password === true;
   // list_staff is admin-only; an officer just doesn't get the section.
@@ -81,7 +117,7 @@ export default async function AdminPage() {
           <ShuttleIcon size={36} />
           <div className="flex flex-col gap-1">
             <p className="font-display text-2xl leading-display font-extrabold tracking-display uppercase">Officer console</p>
-            <p className="font-mono text-caption tracking-caps text-muted-foreground uppercase">Open play sessions</p>
+            <p className="font-mono text-caption tracking-caps text-muted-foreground uppercase">Open play</p>
           </div>
         </div>
         <SignOut />
@@ -101,51 +137,29 @@ export default async function AdminPage() {
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className={headingClass}>New session</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <CreateSessionForm />
-        </CardContent>
-      </Card>
+      {live ? (
+        <section aria-label="Live session">
+          <SessionCard session={live} origin={origin} canDelete={false} />
+        </section>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle className={headingClass}>Start open play</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CreateSessionForm />
+          </CardContent>
+        </Card>
+      )}
 
-      <section aria-label="Sessions" className="flex flex-col gap-3">
-        {sessions.length === 0 && <p className="text-muted-foreground">No sessions yet.</p>}
-        {sessions.map((s) => (
-          <Card key={s.id}>
-            <CardContent className="flex flex-wrap items-center gap-4">
-              {s.status === "ACTIVE" && <SessionQr url={`${origin}/play/${s.code}`} code={s.code} />}
-              <div className="flex min-w-40 flex-1 flex-col gap-1">
-                <div className="flex flex-wrap items-center gap-x-2">
-                  <h2 className="font-display text-2xl font-extrabold tracking-display wrap-break-word uppercase">{s.name}</h2>
-                  <Badge
-                    className={s.status === "ACTIVE" ? "bg-mat text-white" : ""}
-                    variant={s.status === "ACTIVE" ? "default" : "secondary"}
-                  >
-                    {s.status === "ACTIVE" ? "Live" : "Ended"}
-                  </Badge>
-                </div>
-                <p className="font-mono text-xs tracking-meta text-muted-foreground uppercase">
-                  /play/{s.code} · {s.courts} courts · {s.players} players
-                </p>
-                <nav aria-label={`${s.name} links`} className="-mx-1 flex flex-wrap font-mono text-xs tracking-meta uppercase">
-                  {s.status === "ACTIVE" && (
-                    <a className="inline-flex min-h-11 items-center px-1 underline underline-offset-4" href={`/play/${s.code}`}>
-                      Live board &amp; settings
-                    </a>
-                  )}
-                  <Link className="inline-flex min-h-11 items-center px-1 underline underline-offset-4" href={`/admin/sessions/${s.id}`}>
-                    Details
-                  </Link>
-                </nav>
-              </div>
-              {s.status === "ACTIVE" && <EndSessionButton sessionId={s.id} />}
-              {s.status !== "ACTIVE" && staff && <DeleteSessionButton sessionId={s.id} />}
-            </CardContent>
-          </Card>
-        ))}
-      </section>
+      {past.length > 0 && (
+        <section aria-label="Past sessions" className="flex flex-col gap-3">
+          <h2 className={headingClass}>Past sessions</h2>
+          {past.map((s) => (
+            <SessionCard key={s.id} session={s} origin={origin} canDelete={!!staff} />
+          ))}
+        </section>
+      )}
 
       {staff && (
         <section aria-label="Admins" className="flex flex-col gap-3">
@@ -158,7 +172,7 @@ export default async function AdminPage() {
                     {m.email}
                     {m.user_id === myId && <span className="text-muted-foreground"> (you)</span>}
                   </p>
-                  <p className="font-mono text-xs tracking-meta text-muted-foreground uppercase">
+                  <p className={metaClass}>
                     {m.role.toLowerCase()} · {m.last_sign_in_at ? "has signed in" : "never signed in"}
                   </p>
                 </div>
