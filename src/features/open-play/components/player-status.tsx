@@ -11,6 +11,7 @@ type Props = {
   eta: (index: number) => string | null;
   busy: boolean;
   onJoin: () => void;
+  onHome: () => void;
   onLeave: () => void;
   onStart: (roundId: string) => void;
   onFinish: (roundId: string) => void;
@@ -20,14 +21,14 @@ type Props = {
 type Action = {
   label: string;
   run: () => void;
-  kind: "join" | "leave" | "urgent" | "plain";
+  kind: "join" | "leave" | "urgent" | "plain" | "home";
 };
 
 /**
  * The one line everybody scans for: where am I? Its buttons live in a bar fixed to the bottom of the
  * phone (the easy thumb reach) with the action you're most likely to need for your current state.
  */
-export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStart, onFinish, onTogglePause }: Props) {
+export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onHome, onLeave, onStart, onFinish, onTogglePause }: Props) {
   const { me, courts, session, queue } = snapshot;
   const myCourt = courts.find((c) => c.round && c.round.id === me.round_id);
   const ended = session.status === "ENDED";
@@ -41,7 +42,7 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
   if (ended) {
     title = "This session has ended";
     sub = "Thanks for playing.";
-    actions = [];
+    actions = [{ label: "Back to home", run: onHome, kind: "home" }];
   } else if (me.state === "PLAYING" && myCourt?.round) {
     tone = "play";
     title = `You're on court ${myCourt.court_number}`;

@@ -3,13 +3,15 @@
 import { useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { usePush } from "../hooks/use-push";
+import type { usePush } from "../hooks/use-push";
 
 const noop = () => () => {};
 const isIPhone = () => /iPad|iPhone|iPod/.test(navigator.userAgent);
 
+export type Push = ReturnType<typeof usePush>;
+
 /**
- * How a player hears it's their turn:
+ * The alert controls, shown in the header's bell popover. How a player hears it's their turn:
  *  - on this page: a sound (and a vibration on Android phones);
  *  - anywhere else: a phone notification, which carries its own sound and buzz.
  * iPhones can't vibrate a web page at all (Safari has no vibration API), so there the buzz comes only from the notification.
@@ -19,17 +21,18 @@ export function AlertSettings({
   onSound,
   onTry,
   canVibrate,
+  push,
 }: {
   sound: boolean;
   onSound: (on: boolean) => void;
   onTry: () => void;
   canVibrate: boolean;
+  push: Push;
 }) {
-  const push = usePush();
   const iphone = useSyncExternalStore(noop, isIPhone, () => false);
 
   return (
-    <section aria-label="Alerts" className="flex flex-col gap-3 rounded-card border-2 border-ink/15 bg-white px-4 py-3 lg:px-6">
+    <div className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-3">
         <label className="flex min-h-11 flex-1 items-center gap-3">
           <Switch checked={sound} onCheckedChange={onSound} />
@@ -75,10 +78,7 @@ export function AlertSettings({
             )}
           </div>
           {push.state === "needs-install" && (
-            <p className="text-xs text-ink-2">
-              On iPhone, notifications only work for an app on your Home Screen. Tap Share, then &ldquo;Add to Home Screen&rdquo;, and open
-              it from there.
-            </p>
+            <p className="text-xs text-ink-2">On iPhone, notifications only work once the app is on your Home Screen. Steps are below.</p>
           )}
           {push.state === "denied" && (
             <p className="text-xs text-ink-2">Notifications are blocked. Allow them for this site in your browser or phone settings.</p>
@@ -91,6 +91,6 @@ export function AlertSettings({
           )}
         </div>
       )}
-    </section>
+    </div>
   );
 }

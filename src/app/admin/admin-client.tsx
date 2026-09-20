@@ -12,8 +12,8 @@ import { addAdminForm, changePasswordForm, resetAdminPassword } from "@/features
 import { ConfirmButton } from "@/features/open-play/components/confirm-button";
 import { QrButton } from "@/features/open-play/components/qr-button";
 
-export function SessionQr({ url, code }: { url: string; code: string }) {
-  return <QrButton url={url} code={code} size={72} />;
+export function JoinQr({ url }: { url: string }) {
+  return <QrButton url={url} size={72} downloadable />;
 }
 
 export function EndSessionButton({ sessionId }: { sessionId: string }) {
@@ -114,7 +114,7 @@ export function CreateSessionForm() {
           <Switch id="auto-requeue" name="autoRequeue" defaultChecked={v?.autoRequeue === true} />
           <FieldLabel htmlFor="auto-requeue">Automatically re-queue players when their game ends</FieldLabel>
         </Field>
-        <FormFooter state={state} pending={pending} label="Create session" />
+        <FormFooter state={state} pending={pending} label="Start session" />
       </FieldGroup>
     </form>
   );

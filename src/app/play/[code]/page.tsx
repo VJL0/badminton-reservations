@@ -5,6 +5,7 @@ import { LiveBoard } from "@/features/open-play/components/live-board";
 import { NameEntry } from "@/features/open-play/components/name-entry";
 import { sessionCodeSchema } from "@/features/open-play/schemas";
 import type { Snapshot } from "@/features/open-play/types";
+import { getActiveSessionCode } from "@/lib/supabase/active-session";
 import { createClient } from "@/lib/supabase/server";
 
 export async function generateMetadata({ params }: PageProps<"/play/[code]">): Promise<Metadata> {
@@ -14,16 +15,11 @@ export async function generateMetadata({ params }: PageProps<"/play/[code]">): P
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
-async function liveSessionCode(supabase: Supabase) {
-  const { data } = await supabase.rpc("get_active_session_code");
-  return typeof data === "string" ? data : null;
-}
-
 /** A code that leads nowhere: take the player to tonight's session if there is one, else say so. */
 async function sendToLive(supabase: Supabase, notice: "not-found" | "ended", not: string): Promise<never> {
-  const live = await liveSessionCode(supabase);
+  const live = await getActiveSessionCode(supabase);
   if (live && live !== not) redirect(`/play/${live}?notice=${notice}`);
-  redirect(notice === "ended" ? "/" : "/?invalid=notfound");
+  redirect("/");
 }
 
 export default async function PlayPage({ params, searchParams }: PageProps<"/play/[code]">) {
@@ -46,7 +42,7 @@ export default async function PlayPage({ params, searchParams }: PageProps<"/pla
 
   // An ended session is a dead end for players: move them on. Officers can still open it to look.
   if (snapshot.session.status === "ENDED" && !snapshot.me.role) {
-    const live = await liveSessionCode(supabase);
+    const live = await getActiveSessionCode(supabase);
     if (live && live !== code) redirect(`/play/${live}?notice=ended`);
   }
 
