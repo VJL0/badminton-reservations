@@ -13,7 +13,7 @@ import { ConfirmButton } from "@/features/open-play/components/confirm-button";
 import { QrButton } from "@/features/open-play/components/qr-button";
 
 export function JoinQr({ url }: { url: string }) {
-  return <QrButton url={url} size={72} />;
+  return <QrButton url={url} size={72} downloadable />;
 }
 
 export function EndSessionButton({ sessionId }: { sessionId: string }) {

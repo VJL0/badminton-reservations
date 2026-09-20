@@ -1,20 +1,30 @@
 "use client";
 
-import { QRCodeSVG } from "qrcode.react";
+import { QRCodeCanvas, QRCodeSVG } from "qrcode.react";
 import { useRef, useState } from "react";
 
 /**
  * Small QR that opens full-screen-sized on tap, so it can be scanned from across a table.
  * It always points at the site root, which sends players to whichever session is live, so one printed QR serves every night.
  */
-export function QrButton({ url, size = 88 }: { url?: string; size?: number }) {
+export function QrButton({ url, size = 88, downloadable = false }: { url?: string; size?: number; downloadable?: boolean }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
   const [href, setHref] = useState(url ?? "");
+  const [opened, setOpened] = useState(false);
 
   function open() {
+    setOpened(true);
     // Resolve the origin on the client so callers don't need to know it.
     if (!url) setHref(window.location.origin);
     dialog.current?.showModal();
+  }
+
+  function download() {
+    const link = document.createElement("a");
+    link.href = canvas.current?.toDataURL("image/png") ?? "";
+    link.download = "join-qr.png";
+    link.click();
   }
 
   return (
@@ -37,13 +47,22 @@ export function QrButton({ url, size = 88 }: { url?: string; size?: number }) {
         <p className="font-mono text-sm tracking-caps uppercase">Scan to join</p>
         {href && <QRCodeSVG value={href} className="mx-auto my-5 h-auto w-full" size={512} />}
         <p className="mb-5 text-sm wrap-anywhere text-ink-2">{href}</p>
-        <button
-          type="button"
-          onClick={() => dialog.current?.close()}
-          className="h-12 w-full rounded-xl bg-ink text-base font-bold text-white"
-        >
-          Close
-        </button>
+        {/* A print-sized copy of the code, drawn only once the dialog has been opened. */}
+        {downloadable && opened && href && <QRCodeCanvas ref={canvas} value={href} size={1024} marginSize={4} hidden />}
+        <div className="flex gap-3">
+          {downloadable && (
+            <button type="button" onClick={download} className="h-12 flex-1 rounded-xl bg-ink text-base font-bold text-white">
+              Download PNG
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => dialog.current?.close()}
+            className="h-12 flex-1 rounded-xl bg-ink text-base font-bold text-white"
+          >
+            Close
+          </button>
+        </div>
       </dialog>
     </>
   );
