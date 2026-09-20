@@ -3,7 +3,8 @@ import { Big_Shoulders, DM_Mono, Instrument_Sans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
 
-const display = Big_Shoulders({ variable: "--font-display", subsets: ["latin"], weight: ["700", "800"] });
+// No fallback-metrics data exists for Big Shoulders, so skip the auto-generated fallback (it only logs a build warning).
+const display = Big_Shoulders({ variable: "--font-display", subsets: ["latin"], weight: ["700", "800"], adjustFontFallback: false, fallback: ["Impact", "Arial Narrow", "sans-serif"] });
 const sans = Instrument_Sans({ variable: "--font-sans", subsets: ["latin"] });
 const mono = DM_Mono({ variable: "--font-mono", subsets: ["latin"], weight: ["400", "500"] });
 
