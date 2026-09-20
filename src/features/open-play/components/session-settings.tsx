@@ -107,6 +107,7 @@ export function SessionSettings({ snapshot, busy, run }: { snapshot: Snapshot; b
           <span className={label}>
             {Math.round(session.game_duration_seconds / 60)} min games ·{" "}
             {session.auto_start ? `auto-start${session.start_delay_seconds ? ` after ${session.start_delay_seconds}s` : ""}` : "manual start"} ·{" "}
+            {session.auto_finish ? "auto-end" : "manual end"} ·{" "}
             {courts.length} courts{session.auto_requeue_on_finish && " · auto re-queue"}
           </span>
         </span>
@@ -117,7 +118,7 @@ export function SessionSettings({ snapshot, busy, run }: { snapshot: Snapshot; b
         <div className="flex flex-col gap-5 border-t border-ink/10 pt-4">
           {/* Remount on server change so the form never shows stale values. */}
           <SettingsForm
-            key={`${session.game_duration_seconds}-${session.auto_start}-${session.start_delay_seconds}-${session.auto_requeue_on_finish}`}
+            key={`${session.game_duration_seconds}-${session.auto_start}-${session.auto_finish}-${session.start_delay_seconds}-${session.auto_requeue_on_finish}`}
             snapshot={snapshot}
             busy={busy}
             run={run}
@@ -143,11 +144,13 @@ function SettingsForm({ snapshot, busy, run }: { snapshot: Snapshot; busy: boole
   const [autoStart, setAutoStart] = useState(session.auto_start);
   const [delay, setDelay] = useState(String(session.start_delay_seconds));
   const [autoRequeue, setAutoRequeue] = useState(session.auto_requeue_on_finish);
+  const [autoFinish, setAutoFinish] = useState(session.auto_finish);
   const dirty =
     Number(minutes) * 60 !== session.game_duration_seconds ||
     autoStart !== session.auto_start ||
     Number(delay) !== session.start_delay_seconds ||
-    autoRequeue !== session.auto_requeue_on_finish;
+    autoRequeue !== session.auto_requeue_on_finish ||
+    autoFinish !== session.auto_finish;
 
   return (
     <form
@@ -159,6 +162,7 @@ function SettingsForm({ snapshot, busy, run }: { snapshot: Snapshot; busy: boole
             minutes: Number(minutes),
             autoRequeue,
             autoStart,
+            autoFinish,
             startDelaySeconds: autoStart ? Number(delay) : session.start_delay_seconds,
           }),
         );
@@ -191,6 +195,13 @@ function SettingsForm({ snapshot, busy, run }: { snapshot: Snapshot; busy: boole
         <span className="text-sm font-semibold">
           Auto-start games when a court fills
           <span className="block text-xs font-normal text-ink-2">Off: someone on the court (or an officer) presses Start.</span>
+        </span>
+      </label>
+      <label className="flex items-center gap-3">
+        <Switch checked={autoFinish} onCheckedChange={setAutoFinish} />
+        <span className="text-sm font-semibold">
+          End games automatically when time is up
+          <span className="block text-xs font-normal text-ink-2">The next game then starts by itself. Off: someone taps End game.</span>
         </span>
       </label>
       <label className="flex items-center gap-3">

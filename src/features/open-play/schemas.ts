@@ -31,5 +31,6 @@ export const sessionSettingsSchema = z.object({
   minutes: z.coerce.number().int().min(1, "Games run at least 1 minute").max(180, "Games run at most 180 minutes"),
   autoRequeue: z.boolean(),
   autoStart: z.boolean(),
+  autoFinish: z.boolean(),
   startDelaySeconds: z.coerce.number().int().min(0, "The countdown can't be negative").max(300, "The countdown is at most 300 seconds"),
 });

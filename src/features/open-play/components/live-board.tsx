@@ -41,26 +41,35 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   const { session, me, courts, queue } = snapshot;
   const eta = makeEta(snapshot, now);
 
-  // Auto-start: when a full court's countdown runs out, whoever is looking reports it. The database checks
-  // the clock and ignores early or duplicate reports, so a small random delay just spreads the requests.
+  // Timers run on the server clock. When one runs out, whoever is looking reports it and the database checks
+  // the clock, ignoring early or duplicate reports, so a small random delay just spreads the requests:
+  //  - a full court's start countdown -> start the game
+  //  - a running game past its time (when the session ends games automatically) -> end it, and the next game
+  //    steps on and starts. A server timer does the same every 30s for rooms where no phone is open.
   const reported = useRef(new Map<string, number>());
-  const dueRounds = courts
-    .filter((c) => c.round?.status === "FILLING" && c.round.start_at && Date.parse(c.round.start_at) <= now)
-    .map((c) => c.round!.id)
+  const due = courts
+    .flatMap((c) => {
+      const r = c.round;
+      if (!r) return [];
+      if (r.status === "FILLING" && r.start_at && Date.parse(r.start_at) <= now) return [`start:${r.id}`];
+      if (r.status === "ACTIVE" && r.ends_at && !r.paused_at && session.auto_finish && Date.parse(r.ends_at) <= now) return [`finish:${r.id}`];
+      return [];
+    })
     .join(",");
   useEffect(() => {
-    const timers = dueRounds
+    const timers = due
       .split(",")
       .filter(Boolean)
-      .filter((id) => Date.now() - (reported.current.get(id) ?? 0) > 5000) // retry a failed report every 5s
-      .map((id) =>
+      .filter((key) => Date.now() - (reported.current.get(key) ?? 0) > 5000) // retry a failed report every 5s
+      .map((key) =>
         setTimeout(() => {
-          reported.current.set(id, Date.now());
-          void startRound(id).then(() => refresh());
+          reported.current.set(key, Date.now());
+          const [kind, id] = key.split(":");
+          void (kind === "start" ? startRound(id) : finishRound(id)).then(() => refresh());
         }, Math.random() * 1000),
       );
     return () => timers.forEach(clearTimeout);
-  }, [dueRounds, now, refresh]);
+  }, [due, now, refresh]);
 
   // The URL carried a one-time notice; drop it so a refresh doesn't repeat it.
   useEffect(() => {

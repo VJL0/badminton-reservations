@@ -35,6 +35,8 @@ export type Snapshot = {
     game_duration_seconds: number;
     auto_requeue_on_finish: boolean;
     auto_start: boolean;
+    /** Games end by themselves when their time is up. */
+    auto_finish: boolean;
     start_delay_seconds: number;
   };
   me: {

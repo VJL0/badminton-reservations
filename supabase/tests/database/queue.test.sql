@@ -1,5 +1,5 @@
 begin;
-select plan(96);
+select plan(106);
 
 create schema tests;
 -- Run SQL as an authenticated user, then hand the role back (so pgTAP itself
@@ -239,7 +239,7 @@ select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select 
 -- ---------- manual start and countdown
 select tests.call(tests.uid(100), $$select public.create_session('Manual', 1, 600, 'MANUAL')$$);
 create temp table t_mn as select id from public.open_play_sessions where code = 'MANUAL';
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, false, 0)', (select id from t_mn)));
+select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, false, 0, true)', (select id from t_mn)));
 select tests.join(tests.uid(n), (select id from t_mn)) from generate_series(1, 4) n;
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'FILLING',
           'with auto-start off a full court waits');
@@ -248,7 +248,7 @@ select throws_ok(format('select tests.call(tests.uid(20), %L)', format('select p
 select tests.call(tests.uid(1), format('select public.start_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and ended_at is null)));
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'ACTIVE', 'a player on court starts it');
 select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and status = 'ACTIVE')));
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 30)', (select id from t_mn)));
+select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 30, true)', (select id from t_mn)));
 select tests.join(tests.uid(n), (select id from t_mn)) from generate_series(5, 8) n;
 select ok((select start_at > now() + interval '25 seconds' and status = 'FILLING' from public.rounds where session_id = (select id from t_mn) and ended_at is null),
           'a full court counts down before it starts');
@@ -257,14 +257,14 @@ select throws_ok(format('select tests.call(tests.uid(20), %L)', format('select p
 update public.rounds set start_at = now() - interval '1 second' where session_id = (select id from t_mn) and ended_at is null;
 select tests.call(tests.uid(20), format('select public.start_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and ended_at is null)));
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'ACTIVE', 'anyone may report the countdown finished');
-select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.update_session_settings(%L, 30, false, true, 0)', (select id from t_mn))),
+select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.update_session_settings(%L, 30, false, true, 0, true)', (select id from t_mn))),
   'invalid_duration', 'durations are bounded');
-select throws_ok(format('select tests.call(tests.uid(101), %L)', format('select public.update_session_settings(%L, 600, false, true, 0)', (select id from t_mn))),
+select throws_ok(format('select tests.call(tests.uid(101), %L)', format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_mn))),
   'not_staff', 'only admins change settings');
 
 -- ---------- reformatting a court that is still filling
 select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and status = 'ACTIVE')));
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, false, 0)', (select id from t_mn)));
+select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, false, 0, true)', (select id from t_mn)));
 select tests.join(tests.uid(n), (select id from t_mn)) from generate_series(11, 13) n;
 create temp table t_mnc as select id from public.courts where session_id = (select id from t_mn);
 select tests.call(tests.uid(100), format('select public.update_court(%L, 1, 1)', (select id from t_mnc)));
@@ -274,7 +274,7 @@ select is((select state::text from public.session_players where player_id = test
 select tests.call(tests.uid(100), format('select public.update_court(%L, 2, 2)', (select id from t_mnc)));
 select is((select state::text from public.session_players where player_id = tests.uid(13) and session_id = (select id from t_mn)), 'PLAYING',
           'growing the court seats the waiting player again');
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 0)', (select id from t_mn)));
+select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_mn)));
 select tests.join(tests.uid(14), (select id from t_mn));
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'ACTIVE',
           'with auto-start back on, the 4th arrival starts the game');
@@ -390,6 +390,37 @@ select ok(exists (select 1 from net.http_request_queue
                    where convert_from(body, 'utf8')::jsonb ->> 'title' = 'You''re up next'
                      and convert_from(body, 'utf8')::jsonb ->> 'player_id' = tests.uid(2)::text),
           'moving into the next four is pushed');
+
+-- ---------- games end by themselves
+select tests.call(tests.uid(100), $$select public.create_session('Auto end', 1, 600, 'AUTOFIN')$$);
+create temp table t_af as select id from public.open_play_sessions where code = 'AUTOFIN';
+select tests.join(tests.uid(n), (select id from t_af)) from generate_series(1, 8) n;   -- 4 playing, 4 waiting
+select throws_ok(format('select tests.call(tests.uid(20), %L)', format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'))),
+  'not_allowed', 'a game that still has time left cannot be ended by an outsider');
+update public.rounds set ends_at = now() - interval '1 second' where session_id = (select id from t_af) and status = 'ACTIVE';
+select tests.call(tests.uid(20), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_af) and status = 'COMPLETED' or (session_id = (select id from t_af) and status = 'ACTIVE') order by created_at limit 1)));
+select is((select count(*)::int from public.rounds where session_id = (select id from t_af) and status = 'COMPLETED'), 1,
+          'anyone may report a game that is past its time');
+select is((select count(*)::int from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'), 1,
+          'the next game starts on its own');
+select is((select state::text from public.session_players where player_id = tests.uid(5) and session_id = (select id from t_af)), 'PLAYING',
+          'the waiting players stepped on');
+-- the server-side timer
+update public.rounds set ends_at = now() - interval '1 second', paused_at = now() - interval '1 minute' where session_id = (select id from t_af) and status = 'ACTIVE';
+select is(public._finish_overdue_rounds(), 0, 'a paused game is not ended by the timer');
+update public.rounds set paused_at = null where session_id = (select id from t_af) and status = 'ACTIVE';
+select is(public._finish_overdue_rounds(), 1, 'the timer ends a game that is past its time');
+select is((select count(*)::int from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'), 0, 'and nobody is left to start another');
+-- turning it off
+select tests.join(tests.uid(n), (select id from t_af)) from generate_series(9, 12) n;
+select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 0, false)', (select id from t_af)));
+update public.rounds set ends_at = now() - interval '1 second' where session_id = (select id from t_af) and status = 'ACTIVE';
+select is(public._finish_overdue_rounds(), 0, 'with automatic ending off the timer leaves games alone');
+select throws_ok(format('select tests.call(tests.uid(20), %L)', format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'))),
+  'not_allowed', 'and outsiders cannot end it');
+select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_af)));
+select is((select count(*)::int from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'), 0,
+          'turning it on ends games that are already past their time');
 
 -- ---------- ending a session
 select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_s)));

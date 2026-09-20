@@ -5,7 +5,7 @@ import { callRpc, invalid, type ActionResult } from "./rpc";
 
 export async function updateSessionSettings(
   sessionId: string,
-  input: { minutes: number; autoRequeue: boolean; autoStart: boolean; startDelaySeconds: number },
+  input: { minutes: number; autoRequeue: boolean; autoStart: boolean; startDelaySeconds: number; autoFinish: boolean },
 ): Promise<ActionResult> {
   const id = idSchema.safeParse(sessionId);
   if (!id.success) return invalid;
@@ -17,6 +17,7 @@ export async function updateSessionSettings(
     p_auto_requeue: p.data.autoRequeue,
     p_auto_start: p.data.autoStart,
     p_start_delay_seconds: p.data.startDelaySeconds,
+    p_auto_finish: p.data.autoFinish,
   });
 }
 

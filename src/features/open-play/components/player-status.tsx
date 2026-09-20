@@ -58,7 +58,9 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
       sub = paused
         ? "The game is paused. Your time is on hold."
         : timeUp
-          ? "Time's up. End the game so the next players can step on."
+          ? session.auto_finish
+            ? "Time's up. The game is ending and the next players are stepping on."
+            : "Time's up. End the game so the next players can step on."
           : `${formatRemaining(rem)} left. Done early? Use End game on your court.`;
       sub += " Leaving lets the game carry on without you.";
       actions = [{ label: "Leave game", run: onLeave, kind: "leave" }];
