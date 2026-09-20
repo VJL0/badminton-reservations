@@ -33,9 +33,9 @@ export function AlertSettings({
       <div className="flex items-center justify-between gap-3">
         <label className="flex min-h-11 flex-1 items-center gap-3">
           <Switch checked={sound} onCheckedChange={onSound} />
-          <span className="font-semibold text-sm">
+          <span className="text-sm font-semibold">
             Sound{canVibrate ? " and vibration" : ""} when it&apos;s your turn
-            <span className="block font-normal text-ink-2 text-xs">
+            <span className="block text-xs font-normal text-ink-2">
               While this page is open.
               {iphone ? " Plays even if your iPhone is on silent." : ""}
             </span>
@@ -49,10 +49,10 @@ export function AlertSettings({
       </div>
 
       {push.state !== "hidden" && (
-        <div className="flex flex-col gap-2 border-ink/10 border-t pt-3">
-          <p className="font-semibold text-sm">
+        <div className="flex flex-col gap-2 border-t border-ink/10 pt-3">
+          <p className="text-sm font-semibold">
             Phone notifications
-            <span className="block font-normal text-ink-2 text-xs">
+            <span className="block text-xs font-normal text-ink-2">
               Reach you when the app is closed or your screen is locked.
               {iphone ? " The buzz on an iPhone comes from the notification." : ""}
             </span>
@@ -75,17 +75,17 @@ export function AlertSettings({
             )}
           </div>
           {push.state === "needs-install" && (
-            <p className="text-ink-2 text-xs">
+            <p className="text-xs text-ink-2">
               On iPhone, notifications only work for an app on your Home Screen. Tap Share, then &ldquo;Add to Home Screen&rdquo;, and open
               it from there.
             </p>
           )}
           {push.state === "denied" && (
-            <p className="text-ink-2 text-xs">Notifications are blocked. Allow them for this site in your browser or phone settings.</p>
+            <p className="text-xs text-ink-2">Notifications are blocked. Allow them for this site in your browser or phone settings.</p>
           )}
-          {push.state === "unsupported" && <p className="text-ink-2 text-xs">This browser can&apos;t send notifications.</p>}
+          {push.state === "unsupported" && <p className="text-xs text-ink-2">This browser can&apos;t send notifications.</p>}
           {push.error && (
-            <p role="alert" className="text-destructive text-xs">
+            <p role="alert" className="text-xs text-destructive">
               {push.error}
             </p>
           )}

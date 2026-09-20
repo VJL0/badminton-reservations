@@ -17,9 +17,9 @@ export const metadata: Metadata = { title: "Session summary" };
 function Stat({ value, label, note }: { value: string; label: string; note?: string }) {
   return (
     <div className="flex flex-col gap-1 rounded-2xl bg-card p-4 ring-1 ring-foreground/10">
-      <p className="whitespace-nowrap font-display font-extrabold text-4xl leading-none max-xs:text-3xl min-[420px]:text-5xl">{value}</p>
+      <p className="font-display text-4xl leading-none font-extrabold whitespace-nowrap max-xs:text-3xl min-[420px]:text-5xl">{value}</p>
       <p className={metaClass}>{label}</p>
-      {note && <p className="text-muted-foreground text-xs">{note}</p>}
+      {note && <p className="text-xs text-muted-foreground">{note}</p>}
     </div>
   );
 }
@@ -71,7 +71,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
         </span>
         {p.name}
       </p>
-      <p className="text-muted-foreground text-sm">
+      <p className="text-sm text-muted-foreground">
         {p.flags.includes("no_games") && <>0 games · here for {formatDuration(p.present_s)}. </>}
         {p.flags.includes("long_wait") && <>Longest wait {formatDuration(p.longest_wait_s)}.</>}
       </p>
@@ -97,11 +97,11 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 lg:gap-8 lg:px-8 lg:py-10">
       <header className="flex flex-col gap-2">
-        <Link href="/admin" className="inline-flex min-h-11 w-fit items-center text-muted-foreground text-sm underline underline-offset-4">
+        <Link href="/admin" className="inline-flex min-h-11 w-fit items-center text-sm text-muted-foreground underline underline-offset-4">
           ← All sessions
         </Link>
         <div className="flex flex-wrap items-center gap-x-2">
-          <h1 className="wrap-break-word min-w-0 font-display font-extrabold text-4xl uppercase tracking-display">{session.name}</h1>
+          <h1 className="min-w-0 font-display text-4xl font-extrabold tracking-display wrap-break-word uppercase">{session.name}</h1>
           <Badge className={live ? "bg-mat text-white" : ""} variant={live ? "default" : "secondary"}>
             {live ? "Live" : "Ended"}
           </Badge>
@@ -116,7 +116,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
           )}{" "}
           · {session.courts} {session.courts === 1 ? "court" : "courts"} · {session.code}
         </p>
-        {live && <p className="text-muted-foreground text-sm">This session is still running. Everything below is measured up to now.</p>}
+        {live && <p className="text-sm text-muted-foreground">This session is still running. Everything below is measured up to now.</p>}
       </header>
 
       <section aria-label="Highlights" className="grid grid-cols-2 gap-3">
@@ -130,7 +130,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
         <Stat value={tracked ? formatDuration(totals.longest_wait_s) : "—"} label="Longest wait" />
       </section>
       {!tracked && (
-        <p className="rounded-2xl bg-card p-4 text-muted-foreground text-sm ring-1 ring-foreground/10">
+        <p className="rounded-2xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-foreground/10">
           Wait times weren&apos;t recorded for this session (it ran before wait tracking existed), so waits and court-idle figures are left
           blank.
         </p>
@@ -149,24 +149,24 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
 
           {flagged.length > 0 ? (
             <div className="flex flex-col gap-2">
-              <h3 className="font-display font-extrabold text-xl uppercase tracking-heading">Needs attention</h3>
+              <h3 className="font-display text-xl font-extrabold tracking-heading uppercase">Needs attention</h3>
               <ul className="flex flex-col gap-2">{flagged.slice(0, 3).map(flagCard)}</ul>
               {flagged.length > 3 && (
                 <details className="group">
-                  <summary className="min-h-11 cursor-pointer list-none py-2 font-semibold text-sm underline underline-offset-4 outline-hidden focus-visible:ring-2 focus-visible:ring-mat [&::-webkit-details-marker]:hidden">
+                  <summary className="min-h-11 cursor-pointer list-none py-2 text-sm font-semibold underline underline-offset-4 outline-hidden focus-visible:ring-2 focus-visible:ring-mat [&::-webkit-details-marker]:hidden">
                     <span className="group-open:hidden">Show {flagged.length - 3} more</span>
                     <span className="hidden group-open:inline">Show fewer</span>
                   </summary>
                   <ul className="flex flex-col gap-2">{flagged.slice(3).map(flagCard)}</ul>
                 </details>
               )}
-              <p className="text-muted-foreground text-xs">
+              <p className="text-xs text-muted-foreground">
                 Flagged: no game after 10+ minutes here, or a wait longer than one full game ({formatDuration(longWait)}). A flag is a
                 prompt to look, not proof the queue failed: they may have gone on a break.
               </p>
             </div>
           ) : (
-            <p className="text-muted-foreground text-sm">
+            <p className="text-sm text-muted-foreground">
               {totals.players === 0
                 ? "Nobody has joined yet."
                 : tracked
@@ -187,7 +187,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
             <Line label="Court time idle" value={formatDuration(Math.max(0, court_use.window_s - court_use.busy_s))} />
             <Line label="Idle while a full game waited" value={tracked ? formatDuration(court_use.idle_backed_s) : "—"} />
           </dl>
-          <p className="text-muted-foreground text-xs">
+          <p className="text-xs text-muted-foreground">
             Idle court time is only a problem when people are waiting. The last figure counts time a court had no game while enough people
             to fill it were in the queue.
           </p>
@@ -209,7 +209,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
                   <div aria-hidden className="h-2.5 overflow-hidden rounded-full bg-foreground/10">
                     <div className="h-full rounded-full bg-mat" style={{ width: `${pct}%` }} />
                   </div>
-                  <p className="text-muted-foreground text-xs">
+                  <p className="text-xs text-muted-foreground">
                     {formatDuration(c.busy_s)} in games · {formatDuration(Math.max(0, c.window_s - c.busy_s))} idle
                   </p>
                 </li>
@@ -237,7 +237,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
           <ul className="divide-y">{latest.map(gameLine)}</ul>
           {older.length > 0 && (
             <details className="group">
-              <summary className="min-h-11 cursor-pointer list-none py-3 font-semibold text-sm underline underline-offset-4 outline-hidden focus-visible:ring-2 focus-visible:ring-mat [&::-webkit-details-marker]:hidden">
+              <summary className="min-h-11 cursor-pointer list-none py-3 text-sm font-semibold underline underline-offset-4 outline-hidden focus-visible:ring-2 focus-visible:ring-mat [&::-webkit-details-marker]:hidden">
                 <span className="group-open:hidden">Show all {games.length} games</span>
                 <span className="hidden group-open:inline">Show fewer</span>
               </summary>
@@ -271,7 +271,7 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
           <a
             href={`/admin/sessions/${session.id}/export`}
             download
-            className="inline-flex min-h-11 w-fit items-center rounded-full border border-foreground/30 px-5 font-semibold text-sm hover:bg-foreground/5"
+            className="inline-flex min-h-11 w-fit items-center rounded-full border border-foreground/30 px-5 text-sm font-semibold hover:bg-foreground/5"
           >
             Export players (CSV)
           </a>

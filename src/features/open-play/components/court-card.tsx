@@ -123,17 +123,17 @@ export function CourtCard({
   return (
     <section
       aria-label={`Court ${court.court_number}`}
-      className="mx-auto flex w-full min-w-0 max-w-[520px] flex-col gap-3 lg:max-w-[324px] lg:gap-[18px]"
+      className="mx-auto flex w-full max-w-130 min-w-0 flex-col gap-3 lg:max-w-81 lg:gap-4.5"
     >
       <header className="flex items-end justify-between">
         <div className="flex items-end gap-2 lg:gap-3">
-          <span className="font-display font-extrabold text-[2.5rem] text-line leading-[0.8] lg:text-[6.5rem]">{court.court_number}</span>
-          <span className="flex flex-col gap-0.5 pb-0 font-mono text-caption text-sage uppercase tracking-caps lg:pb-1.5 lg:text-xs">
+          <span className="font-display text-[2.5rem] leading-[0.8] font-extrabold text-line lg:text-[6.5rem]">{court.court_number}</span>
+          <span className="flex flex-col gap-0.5 pb-0 font-mono text-caption tracking-caps text-sage uppercase lg:pb-1.5 lg:text-xs">
             Court
             <span className="text-line">{formatLabel(court)}</span>
           </span>
         </div>
-        <Badge className={cn("h-7 px-3 font-mono text-xs uppercase tracking-label", CHIP[chip[0]])}>{chip[1]}</Badge>
+        <Badge className={cn("h-7 px-3 font-mono text-xs tracking-label uppercase", CHIP[chip[0]])}>{chip[1]}</Badge>
       </header>
 
       <div className={cn("mat", mine && "mine")}>
@@ -152,15 +152,15 @@ export function CourtCard({
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-col gap-3 lg:min-h-[64px]">
-        <p className="text-sage text-sm leading-snug">{meta}</p>
+      <div className="flex min-h-0 flex-col gap-3 lg:min-h-16">
+        <p className="text-sm leading-snug text-sage">{meta}</p>
         {players.length > 0 && (
           // On the narrowest phones the tokens can only show a few letters, so spell the names out.
-          <p className="xs:hidden text-line text-sm leading-snug">{players.map((p) => p.name).join(", ")}</p>
+          <p className="text-sm leading-snug text-line xs:hidden">{players.map((p) => p.name).join(", ")}</p>
         )}
         {pick && (
           <Button
-            className="h-12 rounded-2xl bg-signal font-semibold text-button text-white hover:bg-signal/90"
+            className="h-12 rounded-2xl bg-signal text-button font-semibold text-white hover:bg-signal/90"
             disabled={busy || pick.disabled}
             onClick={() => onQueue(court.id)}
           >
@@ -169,7 +169,7 @@ export function CourtCard({
         )}
         {canStart && round && (
           <Button
-            className="h-12 rounded-2xl bg-cork font-semibold text-button text-cork-ink hover:bg-cork/90"
+            className="h-12 rounded-2xl bg-cork text-button font-semibold text-cork-ink hover:bg-cork/90"
             disabled={busy}
             onClick={() => onStart(round.id)}
           >
@@ -181,13 +181,13 @@ export function CourtCard({
             <ConfirmButton
               label={timeUp ? "End game (time's up)" : "End game early"}
               tone={timeUp ? "urgent" : "hall"}
-              className="h-auto min-h-12 min-w-0 flex-1 whitespace-normal py-2 leading-tight"
+              className="h-auto min-h-12 min-w-0 flex-1 py-2 leading-tight whitespace-normal"
               disabled={busy}
               onConfirm={() => onFinish(round.id)}
             />
             <Button
               variant="outline"
-              className="h-12 shrink-0 rounded-2xl border-line/60 bg-transparent px-5 font-semibold text-button text-line hover:bg-line/10 hover:text-line"
+              className="h-12 shrink-0 rounded-2xl border-line/60 bg-transparent px-5 text-button font-semibold text-line hover:bg-line/10 hover:text-line"
               disabled={busy}
               onClick={() => onTogglePause(round.id, !paused)}
             >
