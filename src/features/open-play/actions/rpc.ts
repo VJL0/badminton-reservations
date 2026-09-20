@@ -1,4 +1,5 @@
 import "server-only";
+import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
 export type ActionResult = { ok: true } | { ok: false; error: string };
@@ -29,7 +30,12 @@ export const invalid: ActionResult = { ok: false, error: "Invalid request." };
 
 // Server Actions are public endpoints: authorization lives in the database
 // functions, which read the caller's JWT. This only forwards the call.
-export async function callRpc(fn: string, args: Record<string, unknown>): Promise<ActionResult> {
+type Fns = Database["public"]["Functions"];
+/** Only functions clients may call: the `_internal` ones are locked away in the database. */
+type RpcName = Exclude<keyof Fns, `_${string}`>;
+
+// The generated types make a wrong function name or argument name a compile error, not a runtime one.
+export async function callRpc<F extends RpcName>(fn: F, args: Fns[F]["Args"]): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.rpc(fn, args);
   if (error) {

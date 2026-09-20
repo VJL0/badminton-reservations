@@ -1,10 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { refresh } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import { emailSchema, idSchema, passwordSchema } from "../schemas";
-import { invalid, type ActionResult } from "./rpc";
+import { emailSchema, firstIssue, idSchema, passwordSchema } from "../schemas";
+import type { FormState } from "./form-state";
+import { type ActionResult, invalid } from "./rpc";
 
 // Shared starting password. Every account created or reset with it is flagged must_change_password
 // (app_metadata is writable only with the service role) and the console nags until it's replaced.
@@ -20,11 +21,14 @@ async function requireAdmin(): Promise<{ id: string } | null> {
 }
 
 const denied: ActionResult = { ok: false, error: "Only admins can do that." };
-const unconfigured: ActionResult = { ok: false, error: "Admin management isn't configured on this server." };
+const unconfigured: ActionResult = {
+  ok: false,
+  error: "Admin management isn't configured on this server.",
+};
 
-export async function addAdmin(email: string): Promise<ActionResult> {
+async function addAdmin(email: string): Promise<ActionResult> {
   const parsed = emailSchema.safeParse(email);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   if (!(await requireAdmin())) return denied;
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return unconfigured;
 
@@ -46,7 +50,7 @@ export async function addAdmin(email: string): Promise<ActionResult> {
     await admin.auth.admin.deleteUser(data.user.id); // don't leave an orphan login behind
     return { ok: false, error: "Couldn't create the account." };
   }
-  revalidatePath("/admin");
+  refresh();
   return { ok: true };
 }
 
@@ -73,9 +77,9 @@ export async function resetAdminPassword(userId: string): Promise<ActionResult> 
   return { ok: true };
 }
 
-export async function changeMyPassword(password: string): Promise<ActionResult> {
+async function changeMyPassword(password: string): Promise<ActionResult> {
   const parsed = passwordSchema.safeParse(password);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   if (parsed.data === DEFAULT_PASSWORD) return { ok: false, error: "Pick a password of your own." };
 
   const supabase = await createClient();
@@ -90,6 +94,17 @@ export async function changeMyPassword(password: string): Promise<ActionResult> 
     });
     await supabase.auth.refreshSession(); // new JWT without the flag
   }
-  revalidatePath("/admin");
+  refresh();
   return { ok: true };
+}
+
+export async function addAdminForm(_prev: FormState, formData: FormData): Promise<FormState> {
+  const email = String(formData.get("email") ?? "");
+  const res = await addAdmin(email);
+  return res.ok ? { ok: true, message: "Admin added." } : { ok: false, error: res.error, values: { email } };
+}
+
+export async function changePasswordForm(_prev: FormState, formData: FormData): Promise<FormState> {
+  const res = await changeMyPassword(String(formData.get("password") ?? ""));
+  return res.ok ? { ok: true, message: "Password changed." } : { ok: false, error: res.error }; // never echo a password back
 }

@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { remainingMs } from "../eta";
-import { formatLabel, type Court, type Snapshot } from "../types";
+import { type Court, formatLabel, type Snapshot } from "../types";
 import { ConfirmButton } from "./confirm-button";
 import { TimerPlate } from "./court-timer";
 import { PlayerSlot } from "./player-slot";
@@ -22,49 +22,64 @@ type Props = {
   onRemove: (playerId: string) => void;
 };
 
-const CHIP: Record<string, string> = {
+const CHIP = {
   play: "bg-mat text-white",
   up: "bg-signal text-white",
   fill: "bg-cork text-cork-ink",
   open: "border-sage bg-transparent text-sage",
-};
+} as const satisfies Record<string, string>;
+type ChipTone = keyof typeof CHIP;
 
-export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, busy, onQueue, onStart, onFinish, onTogglePause, onRemove }: Props) {
+export function CourtCard({
+  court,
+  me,
+  now,
+  durationSeconds,
+  autoStart,
+  ended,
+  busy,
+  onQueue,
+  onStart,
+  onFinish,
+  onTogglePause,
+  onRemove,
+}: Props) {
   const round = court.round;
   const players = round?.players ?? [];
   const isStaff = me.role !== null;
   const mine = round !== null && me.round_id === round.id;
-  const active = round?.status === "ACTIVE" && !!round.ends_at;
-  const paused = active && !!round!.paused_at;
+  const running = round?.status === "ACTIVE" && round.ends_at ? round : null; // a game with a clock
+  const active = running !== null;
+  const paused = !!running?.paused_at;
   const filling = round?.status === "FILLING";
-  const timeUp = active && !paused && remainingMs(round!, now) <= 0;
+  const timeUp = running !== null && !paused && remainingMs(running, now) <= 0;
   const canControl = active && (isStaff || mine);
   const full = players.length >= court.capacity;
-  const countingDown = filling && !!round!.start_at;
+  const countingDown = filling && !!round?.start_at;
   // A game can start early (or, with auto-start off, at all) once two are on court.
   const canStart = filling && players.length >= 2 && (isStaff || mine);
   // Room to step straight on: open court, no game running, a free place.
   const hasRoom = round?.status !== "ACTIVE" && !full;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
 
-  const chip = ended
+  const chip: [ChipTone, string] = ended
     ? ["open", "Closed"]
     : timeUp
-    ? ["up", "Time's up"]
-    : paused
-      ? ["open", "Paused"]
-      : active
-        ? ["play", "In play"]
-        : players.length
-          ? ["fill", "Filling"]
-          : ["open", "Open"];
+      ? ["up", "Time's up"]
+      : paused
+        ? ["open", "Paused"]
+        : active
+          ? ["play", "In play"]
+          : players.length
+            ? ["fill", "Filling"]
+            : ["open", "Open"];
   const meta = ended
     ? "This session has ended."
     : active
-    ? paused
-      ? "Game paused. The clock is stopped."
-      : `${Math.round(durationSeconds / 60)}-minute game${players.length < court.capacity ? ` · ${players.length} of ${court.capacity} on court` : ""}`
-    : countingDown
+      ? paused
+        ? "Game paused. The clock is stopped."
+        : `${Math.round(durationSeconds / 60)}-minute game${players.length < court.capacity ? ` · ${players.length} of ${court.capacity} on court` : ""}`
+      : countingDown
         ? "Court is full. The game starts automatically."
         : full
           ? "Court is full. Waiting for someone on it to start."
@@ -77,8 +92,16 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
   let pick: null | { label: string; disabled: boolean } = null;
   if (!ended && me.state !== "PLAYING") {
     if (me.preferred_court_id === court.id) pick = { label: "You're waiting for this court", disabled: true };
-    else if (me.state === "QUEUED") pick = { label: `Switch to court ${court.court_number}`, disabled: false };
-    else pick = { label: `${hasRoom ? "Join" : "Queue for"} court ${court.court_number}`, disabled: false };
+    else if (me.state === "QUEUED")
+      pick = {
+        label: `Switch to court ${court.court_number}`,
+        disabled: false,
+      };
+    else
+      pick = {
+        label: `${hasRoom ? "Join" : "Queue for"} court ${court.court_number}`,
+        disabled: false,
+      };
   }
 
   // Slots 1..a are one side of the net, the rest the other.
@@ -98,16 +121,19 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
   );
 
   return (
-    <section aria-label={`Court ${court.court_number}`} className="mx-auto flex w-full min-w-0 max-w-[520px] flex-col gap-3 lg:max-w-[324px] lg:gap-[18px]">
+    <section
+      aria-label={`Court ${court.court_number}`}
+      className="mx-auto flex w-full min-w-0 max-w-[520px] flex-col gap-3 lg:max-w-[324px] lg:gap-[18px]"
+    >
       <header className="flex items-end justify-between">
         <div className="flex items-end gap-2 lg:gap-3">
-          <span className="font-display text-[40px] font-extrabold leading-[0.8] text-line lg:text-[104px]">{court.court_number}</span>
-          <span className="flex flex-col gap-0.5 pb-0 font-mono text-[11px] uppercase tracking-[0.14em] text-sage lg:pb-1.5 lg:text-xs">
+          <span className="font-display font-extrabold text-[2.5rem] text-line leading-[0.8] lg:text-[6.5rem]">{court.court_number}</span>
+          <span className="flex flex-col gap-0.5 pb-0 font-mono text-caption text-sage uppercase tracking-caps lg:pb-1.5 lg:text-xs">
             Court
             <span className="text-line">{formatLabel(court)}</span>
           </span>
         </div>
-        <Badge className={cn("h-7 px-3 font-mono text-xs uppercase tracking-[0.12em]", CHIP[chip[0]])}>{chip[1]}</Badge>
+        <Badge className={cn("h-7 px-3 font-mono text-xs uppercase tracking-label", CHIP[chip[0]])}>{chip[1]}</Badge>
       </header>
 
       <div className={cn("mat", mine && "mine")}>
@@ -127,14 +153,14 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 lg:min-h-[64px]">
-        <p className="text-sm leading-snug text-sage">{meta}</p>
+        <p className="text-sage text-sm leading-snug">{meta}</p>
         {players.length > 0 && (
           // On the narrowest phones the tokens can only show a few letters, so spell the names out.
-          <p className="text-sm leading-snug text-line min-[360px]:hidden">{players.map((p) => p.name).join(", ")}</p>
+          <p className="xs:hidden text-line text-sm leading-snug">{players.map((p) => p.name).join(", ")}</p>
         )}
         {pick && (
           <Button
-            className="h-12 rounded-2xl bg-signal text-[15px] font-semibold text-white hover:bg-signal/90"
+            className="h-12 rounded-2xl bg-signal font-semibold text-button text-white hover:bg-signal/90"
             disabled={busy || pick.disabled}
             onClick={() => onQueue(court.id)}
           >
@@ -143,7 +169,7 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
         )}
         {canStart && round && (
           <Button
-            className="h-12 rounded-2xl bg-cork text-[15px] font-semibold text-cork-ink hover:bg-cork/90"
+            className="h-12 rounded-2xl bg-cork font-semibold text-button text-cork-ink hover:bg-cork/90"
             disabled={busy}
             onClick={() => onStart(round.id)}
           >
@@ -161,7 +187,7 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
             />
             <Button
               variant="outline"
-              className="h-12 shrink-0 rounded-2xl px-5 text-[15px] font-semibold border-line/60 bg-transparent text-line hover:bg-line/10 hover:text-line"
+              className="h-12 shrink-0 rounded-2xl border-line/60 bg-transparent px-5 font-semibold text-button text-line hover:bg-line/10 hover:text-line"
               disabled={busy}
               onClick={() => onTogglePause(round.id, !paused)}
             >

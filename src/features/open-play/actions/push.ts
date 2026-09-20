@@ -3,17 +3,24 @@
 import { z } from "zod";
 import { pushConfigured, sendPush } from "@/lib/push";
 import { createClient } from "@/lib/supabase/server";
-import { callRpc, type ActionResult } from "./rpc";
+import { type ActionResult, callRpc } from "./rpc";
 
 const subscriptionSchema = z.object({
   endpoint: z.url().startsWith("https://").max(2048),
-  keys: z.object({ p256dh: z.string().min(1).max(256), auth: z.string().min(1).max(256) }),
+  keys: z.object({
+    p256dh: z.string().min(1).max(256),
+    auth: z.string().min(1).max(256),
+  }),
 });
 
 export async function savePushSubscription(subscription: unknown): Promise<ActionResult> {
   const p = subscriptionSchema.safeParse(subscription);
   if (!p.success) return { ok: false, error: "This browser can't receive notifications." };
-  return callRpc("save_push_subscription", { p_endpoint: p.data.endpoint, p_p256dh: p.data.keys.p256dh, p_auth: p.data.keys.auth });
+  return callRpc("save_push_subscription", {
+    p_endpoint: p.data.endpoint,
+    p_p256dh: p.data.keys.p256dh,
+    p_auth: p.data.keys.auth,
+  });
 }
 
 export async function deletePushSubscription(endpoint: string): Promise<ActionResult> {
@@ -33,8 +40,17 @@ export async function sendTestNotification(): Promise<ActionResult> {
       tag: "test",
       url: "/",
     });
-    if (devices === 0) return { ok: false, error: "No device is subscribed yet. Turn notifications on first." };
-    return sent > 0 ? { ok: true } : { ok: false, error: "Couldn't reach your device. Try turning notifications off and on again." };
+    if (devices === 0)
+      return {
+        ok: false,
+        error: "No device is subscribed yet. Turn notifications on first.",
+      };
+    return sent > 0
+      ? { ok: true }
+      : {
+          ok: false,
+          error: "Couldn't reach your device. Try turning notifications off and on again.",
+        };
   } catch (e) {
     console.error(`[push] test failed: ${(e as Error).message}`);
     return { ok: false, error: "Something went wrong. Try again." };

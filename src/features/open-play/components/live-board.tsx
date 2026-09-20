@@ -1,30 +1,31 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { setRoundPaused } from "../actions/court-status";
+import { createClient } from "@/lib/supabase/client";
 import { finishRound } from "../actions/finish-round";
 import { joinQueue } from "../actions/join-queue";
 import { leaveQueue } from "../actions/leave-queue";
+import { setRoundPaused } from "../actions/pause-round";
 import { removePlayer } from "../actions/remove-player";
 import type { ActionResult } from "../actions/rpc";
 import { startRound } from "../actions/start-round";
 import { makeEta } from "../eta";
-import { useNow } from "../hooks/use-now";
 import { useAlerts } from "../hooks/use-alerts";
+import { useNow } from "../hooks/use-now";
 import { useSessionRealtime } from "../hooks/use-session-realtime";
 import { useWakeLock } from "../hooks/use-wake-lock";
-import { createClient } from "@/lib/supabase/client";
 import { isUpNext, type Snapshot } from "../types";
-import { CourtCard } from "./court-card";
 import { AlertSettings } from "./alert-settings";
-import { StaffMenu } from "./staff-menu";
-import { QrButton } from "./qr-button";
+import { CourtCard } from "./court-card";
+import { PanelBoundary } from "./panel-boundary";
 import { PlayerStatus } from "./player-status";
+import { QrButton } from "./qr-button";
 import { Queue } from "./queue";
 import { SessionSettings } from "./session-settings";
 import { ShuttleIcon } from "./shuttle-icon";
+import { StaffMenu } from "./staff-menu";
 
 const NOTICES = {
   "not-found": "That session code wasn't found, so we've taken you to the session that's running now.",
@@ -52,24 +53,29 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
       const r = c.round;
       if (!r) return [];
       if (r.status === "FILLING" && r.start_at && Date.parse(r.start_at) <= now) return [`start:${r.id}`];
-      if (r.status === "ACTIVE" && r.ends_at && !r.paused_at && session.auto_finish && Date.parse(r.ends_at) <= now) return [`finish:${r.id}`];
+      if (r.status === "ACTIVE" && r.ends_at && !r.paused_at && session.auto_finish && Date.parse(r.ends_at) <= now)
+        return [`finish:${r.id}`];
       return [];
     })
     .join(",");
   useEffect(() => {
-    const timers = due
-      .split(",")
-      .filter(Boolean)
-      .filter((key) => Date.now() - (reported.current.get(key) ?? 0) > 5000) // retry a failed report every 5s
-      .map((key) =>
-        setTimeout(() => {
-          reported.current.set(key, Date.now());
-          const [kind, id] = key.split(":");
-          void (kind === "start" ? startRound(id) : finishRound(id)).then(() => refresh());
-        }, Math.random() * 1000),
-      );
-    return () => timers.forEach(clearTimeout);
-  }, [due, now, refresh]);
+    if (!due) return;
+    const report = () => {
+      for (const key of due.split(",")) {
+        if (Date.now() - (reported.current.get(key) ?? 0) < 4500) continue; // already reported: give it a moment
+        reported.current.set(key, Date.now());
+        const [kind, id] = key.split(":");
+        if (!id) continue;
+        void (kind === "start" ? startRound(id) : finishRound(id)).then(() => refresh());
+      }
+    };
+    const first = setTimeout(report, Math.random() * 1000); // spread simultaneous reports across phones
+    const retry = setInterval(report, 5000); // a report that failed is sent again
+    return () => {
+      clearTimeout(first);
+      clearInterval(retry);
+    };
+  }, [due, refresh]);
 
   // The URL carried a one-time notice; drop it so a refresh doesn't repeat it.
   useEffect(() => {
@@ -112,13 +118,18 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   const last = useRef<{ playing: boolean; next: boolean } | null>(null);
   const playing = me.state === "PLAYING";
   const upNext = isUpNext(me);
-  useEffect(() => {
+  // An Effect Event always sees the latest `alerts` and `pending` without making the effect re-run for them:
+  // the effect below should fire when *your turn changes*, not on every render.
+  const onTurnChange = useEffectEvent((playingNow: boolean, upNextNow: boolean) => {
     const prev = last.current;
-    last.current = { playing, next: upNext };
+    last.current = { playing: playingNow, next: upNextNow };
     if (!prev || pending) return; // first look, or the change is the player's own tap
-    if (playing && !prev.playing) alerts.notify("court");
-    else if (upNext && !prev.next) alerts.notify("next");
-  }, [playing, upNext, pending, alerts]);
+    if (playingNow && !prev.playing) alerts.notify("court");
+    else if (upNextNow && !prev.next) alerts.notify("next");
+  });
+  useEffect(() => {
+    onTurnChange(playing, upNext);
+  }, [playing, upNext]);
 
   function run(action: () => Promise<ActionResult>) {
     setError(null);
@@ -130,28 +141,37 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pb-32 pt-5 lg:gap-7 lg:px-14 lg:pb-16 lg:pt-10">
+    <main className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pt-5 pb-32 lg:gap-7 lg:px-14 lg:pt-10 lg:pb-16">
       <header className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2.5 lg:gap-3.5">
-          <span className="hidden text-ink lg:flex"><ShuttleIcon size={44} /></span>
-          <span className="flex text-ink lg:hidden"><ShuttleIcon size={32} /></span>
+          <span className="hidden text-ink lg:flex">
+            <ShuttleIcon size={44} />
+          </span>
+          <span className="flex text-ink lg:hidden">
+            <ShuttleIcon size={32} />
+          </span>
           <div className="flex min-w-0 flex-col gap-1">
-            <p className="break-words font-display text-2xl font-extrabold uppercase leading-[0.9] tracking-[0.03em] lg:text-[32px]">{session.name}</p>
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-2 lg:text-xs lg:tracking-[0.14em]">Open play · {session.code}</p>
+            <p className="wrap-break-word font-display font-extrabold text-2xl uppercase leading-display tracking-display lg:text-[2rem]">
+              {session.name}
+            </p>
+            <p className="font-mono text-caption text-ink-2 uppercase tracking-label lg:text-xs lg:tracking-caps">
+              Open play · {session.code}
+            </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 lg:gap-6">
           {session.status === "ACTIVE" && <QrButton code={session.code} size={36} />}
-          <span className="flex items-center gap-2 font-mono text-[11px] font-medium tracking-[0.14em] text-mat lg:text-xs">
+          <span className="flex items-center gap-2 font-medium font-mono text-caption text-mat tracking-caps lg:text-xs">
             <i className={`live-dot size-2 rounded-full ${connected ? "bg-mat" : "bg-cork"}`} />
-            <span className="max-[379px]:sr-only">{connected ? "LIVE" : "RECONNECTING"}</span>
+            {/* On a phone the dot says it (green / amber); the word is for screen readers and wider screens. */}
+            <span className="max-sm:sr-only">{connected ? "LIVE" : "RECONNECTING"}</span>
           </span>
           {me.role ? (
             <StaffMenu name={me.display_name} role={me.role} />
           ) : (
             <div className="hidden flex-col items-end gap-0.5 lg:flex">
-              <span className="text-base font-bold">{me.display_name}</span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">player</span>
+              <span className="font-bold text-base">{me.display_name}</span>
+              <span className="font-mono text-caption text-ink-2 uppercase tracking-caps">player</span>
             </div>
           )}
         </div>
@@ -159,7 +179,9 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
 
       {(notice || moving) && (
         <Alert role="status">
-          <AlertDescription>{moving ? "This session has ended. Taking you to the session running now…" : NOTICES[notice!]}</AlertDescription>
+          <AlertDescription>
+            {moving ? "This session has ended. Taking you to the session running now…" : notice ? NOTICES[notice] : null}
+          </AlertDescription>
         </Alert>
       )}
       <PlayerStatus
@@ -173,18 +195,26 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         onFinish={(roundId) => run(() => finishRound(roundId))}
         onTogglePause={(roundId, pause) => run(() => setRoundPaused(roundId, pause))}
       />
-      {session.status === "ACTIVE" && <AlertSettings sound={alerts.enabled} onSound={alerts.set} onTry={alerts.preview} canVibrate={alerts.canVibrate} />}
-      {me.role === "ADMIN" && session.status === "ACTIVE" && <SessionSettings snapshot={snapshot} busy={pending} run={run} />}
+      {session.status === "ACTIVE" && (
+        <PanelBoundary label="Alerts">
+          <AlertSettings sound={alerts.enabled} onSound={alerts.set} onTry={alerts.preview} canVibrate={alerts.canVibrate} />
+        </PanelBoundary>
+      )}
+      {me.role === "ADMIN" && session.status === "ACTIVE" && (
+        <PanelBoundary label="Session settings">
+          <SessionSettings snapshot={snapshot} busy={pending} run={run} />
+        </PanelBoundary>
+      )}
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
         </Alert>
       )}
 
-      <section className="flex flex-col gap-7 rounded-[28px] bg-hall px-4 pb-8 pt-6 lg:gap-[30px] lg:rounded-[36px] lg:px-10 lg:pb-10 lg:pt-[34px]">
+      <section className="flex flex-col gap-7 rounded-panel bg-hall px-4 pt-6 pb-8 lg:gap-[30px] lg:rounded-[36px] lg:px-10 lg:pt-[34px] lg:pb-10">
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
-          <h2 className="font-display text-[28px] font-extrabold uppercase tracking-[0.05em] text-line lg:text-4xl">The courts</h2>
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-sage lg:text-xs">
+          <h2 className="font-display font-extrabold text-[1.75rem] text-line uppercase tracking-[0.05em] lg:text-4xl">The courts</h2>
+          <p className="font-mono text-caption text-sage uppercase tracking-caps lg:text-xs">
             {Math.round(session.game_duration_seconds / 60)}-minute games · {session.auto_start ? "auto-start" : "manual start"}
           </p>
         </div>
@@ -209,7 +239,11 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         </div>
       </section>
 
-      {session.status === "ACTIVE" && <Queue queue={queue} me={me} eta={eta} onRemove={(playerId) => run(() => removePlayer(session.id, playerId))} />}
+      {session.status === "ACTIVE" && (
+        <PanelBoundary label="The queue">
+          <Queue queue={queue} me={me} eta={eta} onRemove={(playerId) => run(() => removePlayer(session.id, playerId))} />
+        </PanelBoundary>
+      )}
     </main>
   );
 }

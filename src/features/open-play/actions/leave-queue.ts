@@ -1,7 +1,7 @@
 "use server";
 
 import { idSchema } from "../schemas";
-import { callRpc, invalid, type ActionResult } from "./rpc";
+import { type ActionResult, callRpc, invalid } from "./rpc";
 
 export async function leaveQueue(sessionId: string): Promise<ActionResult> {
   const id = idSchema.safeParse(sessionId);

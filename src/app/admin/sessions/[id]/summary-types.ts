@@ -1,4 +1,4 @@
-export type Flag = "no_games" | "long_wait";
+type Flag = "no_games" | "long_wait";
 
 export type PlayerStat = {
   player_id: string;
@@ -13,7 +13,14 @@ export type PlayerStat = {
   flags: Flag[];
 };
 
-export type CourtStat = { court_number: number; removed: boolean; format: string; busy_s: number; window_s: number; idle_backed_s: number };
+type CourtStat = {
+  court_number: number;
+  removed: boolean;
+  format: string;
+  busy_s: number;
+  window_s: number;
+  idle_backed_s: number;
+};
 
 export type Summary = {
   session: {
@@ -44,5 +51,11 @@ export type Summary = {
   court_use: { busy_s: number; window_s: number; idle_backed_s: number };
   courts: CourtStat[];
   players: PlayerStat[];
-  games: { id: string; court_number: number; started_at: string; ended_at: string | null; players: string[] }[];
+  games: {
+    id: string;
+    court_number: number;
+    started_at: string;
+    ended_at: string | null;
+    players: string[];
+  }[];
 };

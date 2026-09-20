@@ -1,8 +1,5 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 @import "shadcn/tailwind.css";
-
-@custom-variant dark (&:is(.dark *));
 
 /* One committed look: chalk page, dark hall, green mats, cork-amber for "you". */
 @theme inline {
@@ -22,19 +19,6 @@
   --font-display: var(--font-display), "Arial Narrow", sans-serif;
   --font-mono: var(--font-mono), ui-monospace, monospace;
   --font-heading: var(--font-sans);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -62,88 +46,119 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* ---------------------------------------------------------------- court
-   One DOM, two orientations. Phones/tablets: landscape (net vertical).
-   lg and up: portrait (net horizontal). Lines use real doubles proportions:
-   13.4 m × 6.1 m, singles side 0.46 m, doubles long service 0.76 m,
-   short service 1.98 m from the net. */
-.mat { padding: 20px; background: var(--color-surround); border-radius: 18px; }
-.mat.mine { outline: 3px solid var(--color-cork); outline-offset: 5px; }
-.court { container-type: inline-size; position: relative; box-sizing: border-box; width: 100%; aspect-ratio: 13.4 / 6.1; border: 2px solid var(--color-line); background: var(--color-mat); }
-.court .ln { position: absolute; background: var(--color-line); }
-.court .side-a { inset: 7.54% 0 auto 0; height: 2px; }
-.court .side-b { inset: auto 0 7.54% 0; height: 2px; }
-.court .long-a { inset: 0 auto 0 5.67%; width: 2px; }
-.court .long-b { inset: 0 5.67% 0 auto; width: 2px; }
-.court .short-a { inset: 0 auto 0 35.22%; width: 2px; }
-.court .short-b { inset: 0 35.22% 0 auto; width: 2px; }
-.court .cen-a { inset: calc(50% - 1px) auto auto 0; width: 35.22%; height: 2px; }
-.court .cen-b { inset: calc(50% - 1px) 0 auto auto; width: 35.22%; height: 2px; }
-.court .net { position: absolute; z-index: 1; inset: -8px auto -8px calc(50% - 4px); width: 8px; border-left: 3px solid var(--color-feather); background: repeating-linear-gradient(0deg, rgb(241 246 242 / 0.6) 0 1px, transparent 1px 5px); }
-.court .post { position: absolute; z-index: 1; left: calc(50% - 5px); width: 10px; height: 10px; border-radius: 50%; background: var(--color-feather); }
-.court .post-a { top: -14px; }
-.court .post-b { bottom: -14px; }
-.court .tokgrid { position: absolute; inset: 0; z-index: 2; display: flex; justify-content: space-between; padding: 0 10px; }
-.court .tokside { display: flex; flex-direction: column; justify-content: space-around; align-items: flex-start; }
-.court .tokside + .tokside { align-items: flex-end; }
-.court .tokside.dense .tok { height: 26px; font-size: 12px; }
-.court .tokside.dense4 .tok { height: 21px; font-size: 11px; }
+/* Static design tokens: each becomes a utility (`tracking-caps`, `text-caption`, `rounded-panel`, `xs:` ...) and a CSS variable. */
+@theme {
+  /* Phones this narrow or narrower get a tighter layout (`xs:` = 360px and up, `max-xs:` = below it). */
+  --breakpoint-xs: 22.5rem;
 
-/* On phones the court is only ~240-320px wide: tokens take whatever the timer plate leaves (cqw = court width). */
-.tok { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: min(96px, calc((100cqw - clamp(84px, 30cqw, 106px)) / 2 - 14px)); height: 32px; padding: 0 6px; border-radius: 16px; background: var(--color-feather); color: var(--color-ink); font-weight: 700; font-size: 13px; }
-.tok .av { display: none; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--color-surround); color: #fff; place-items: center; font-size: 14px; font-weight: 700; }
-.tok .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.tok.me { background: var(--color-cork); color: var(--color-cork-ink); }
-.tok.me .av { background: var(--color-cork-ink); color: var(--color-cork); }
-.tok.empty { background: transparent; border: 2px dashed rgb(234 243 238 / 0.45); color: rgb(234 243 238 / 0.8); font-weight: 500; }
-/* Too narrow for the word "Open": show a plus instead of "O…". */
-@container (max-width: 270px) { .tok.empty .nm { font-size: 0; } .tok.empty .nm::before { content: "+"; font-size: 16px; } }
-.tok.empty .av { background: rgb(234 243 238 / 0.14); color: var(--color-line); }
+  /* Type: rem, not px, so a phone's "larger text" setting still works. */
+  --text-caption: 0.6875rem;
+  --text-button: 0.9375rem;
 
-.plate { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; width: clamp(84px, 30cqw, 106px); box-sizing: border-box; padding: 8px 4px 7px; border-radius: 12px; background: var(--color-hall); border: 2px solid var(--color-line); display: flex; flex-direction: column; align-items: center; gap: 5px; }
-.plate .digits { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 11cqw, 36px); line-height: 0.85; color: var(--color-line); font-variant-numeric: tabular-nums; }
-.plate.wait .digits { color: var(--color-cork); }
-.plate .plabel { font-family: var(--font-mono); font-size: clamp(8px, 3.2cqw, 9.5px); letter-spacing: 0.08em; white-space: nowrap; color: var(--color-sage); }
-.plate .segs { display: flex; gap: 1.5px; }
-.plate .seg { display: block; width: 3px; height: 5px; border-radius: 1px; background: var(--color-line); }
-.plate .seg.off { background: rgb(234 243 238 / 0.2); }
-.plate .seg.hot { background: var(--color-cork); }
-.plate.up { background: var(--color-signal); border-color: #fff; }
-.plate.up .digits, .plate.up .plabel { color: #fff; }
-.plate.up .seg { background: rgb(255 255 255 / 0.35); }
+  --tracking-display: 0.03em; /* big condensed headings */
+  --tracking-heading: 0.04em;
+  --tracking-meta: 0.1em; /* small monospace captions */
+  --tracking-label: 0.12em;
+  --tracking-caps: 0.14em;
 
-@media (min-width: 1024px) {
-  .mat { padding: 26px; border-radius: 22px; }
-  .court { width: 272px; aspect-ratio: 6.1 / 13.4; }
-  .court .side-a { inset: 0 auto 0 7.54%; width: 2px; height: auto; }
-  .court .side-b { inset: 0 7.54% 0 auto; width: 2px; height: auto; }
-  .court .long-a { inset: 5.67% 0 auto 0; height: 2px; width: auto; }
-  .court .long-b { inset: auto 0 5.67% 0; height: 2px; width: auto; }
-  .court .short-a { inset: 35.22% 0 auto 0; height: 2px; width: auto; }
-  .court .short-b { inset: auto 0 35.22% 0; height: 2px; width: auto; }
-  .court .cen-a { inset: 0 auto auto calc(50% - 1px); width: 2px; height: 35.22%; }
-  .court .cen-b { inset: auto auto 0 calc(50% - 1px); width: 2px; height: 35.22%; }
-  .court .net { inset: calc(50% - 4px) -22px auto -22px; width: auto; height: 9px; border-left: 0; border-top: 3px solid var(--color-feather); background: repeating-linear-gradient(90deg, rgb(241 246 242 / 0.6) 0 1px, transparent 1px 5px); }
-  .court .post { top: calc(50% - 6px); width: 12px; height: 12px; }
-  .court .post-a { left: -28px; bottom: auto; }
-  .court .post-b { left: auto; right: -28px; top: calc(50% - 6px); bottom: auto; }
-  .court .tokgrid { flex-direction: column; padding: 60px 0; }
-  .court .tokside, .court .tokside + .tokside { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; align-content: space-around; gap: 8px 6px; }
-  .court .tokside.dense .tok, .court .tokside.dense4 .tok { height: 44px; font-size: 15px; }
-  .tok { width: 112px; height: 44px; padding: 0 10px 0 5px; border-radius: 22px; justify-content: flex-start; font-size: 15px; font-weight: 600; }
-  .tok .av { display: grid; }
-  .tok.empty { padding: 0 10px 0 3px; }
-  .plate { width: 172px; padding: 11px 12px 10px; border-radius: 16px; gap: 7px; }
-  .plate .digits { font-size: 56px; }
-  .plate .plabel { font-size: 10.5px; letter-spacing: 0.14em; }
-  .plate .segs { gap: 2px; }
-  .plate .seg { width: 5px; height: 6px; }
+  --leading-display: 0.9;
+
+  --radius-card: 1.25rem;
+  --radius-tile: 1.5rem;
+  --radius-panel: 1.75rem;
 }
 
-@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(29 107 85 / 0.5); } 50% { box-shadow: 0 0 0 7px rgb(29 107 85 / 0); } }
-.live-dot { animation: pulse 2s ease-in-out infinite; }
+@layer components {
+  /* ---------------------------------------------------------------- court
+     One DOM, two orientations. Phones/tablets: landscape (net vertical).
+     lg and up: portrait (net horizontal). Lines use real doubles proportions:
+     13.4 m × 6.1 m, singles side 0.46 m, doubles long service 0.76 m,
+     short service 1.98 m from the net. */
+  .mat { padding: 20px; background: var(--color-surround); border-radius: 18px; }
+  .mat.mine { outline: 3px solid var(--color-cork); outline-offset: 5px; }
+  .court { container-type: inline-size; position: relative; box-sizing: border-box; width: 100%; aspect-ratio: 13.4 / 6.1; border: 2px solid var(--color-line); background: var(--color-mat); }
+  .court .ln { position: absolute; background: var(--color-line); }
+  .court .side-a { inset: 7.54% 0 auto 0; height: 2px; }
+  .court .side-b { inset: auto 0 7.54% 0; height: 2px; }
+  .court .long-a { inset: 0 auto 0 5.67%; width: 2px; }
+  .court .long-b { inset: 0 5.67% 0 auto; width: 2px; }
+  .court .short-a { inset: 0 auto 0 35.22%; width: 2px; }
+  .court .short-b { inset: 0 35.22% 0 auto; width: 2px; }
+  .court .cen-a { inset: calc(50% - 1px) auto auto 0; width: 35.22%; height: 2px; }
+  .court .cen-b { inset: calc(50% - 1px) 0 auto auto; width: 35.22%; height: 2px; }
+  .court .net { position: absolute; z-index: 1; inset: -8px auto -8px calc(50% - 4px); width: 8px; border-left: 3px solid var(--color-feather); background: repeating-linear-gradient(0deg, rgb(241 246 242 / 0.6) 0 1px, transparent 1px 5px); }
+  .court .post { position: absolute; z-index: 1; left: calc(50% - 5px); width: 10px; height: 10px; border-radius: 50%; background: var(--color-feather); }
+  .court .post-a { top: -14px; }
+  .court .post-b { bottom: -14px; }
+  .court .tokgrid { position: absolute; inset: 0; z-index: 2; display: flex; justify-content: space-between; padding: 0 10px; }
+  .court .tokside { display: flex; flex-direction: column; justify-content: space-around; align-items: flex-start; }
+  .court .tokside + .tokside { align-items: flex-end; }
+
+  /* On phones the court is only ~240-320px wide: tokens take whatever the timer plate leaves (cqw = court width). */
+  .tok { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; box-sizing: border-box; width: min(96px, calc((100cqw - clamp(84px, 30cqw, 106px)) / 2 - 14px)); height: 32px; padding: 0 6px; border-radius: 16px; background: var(--color-feather); color: var(--color-ink); font-weight: 700; font-size: 13px; }
+  .tok .av { display: none; flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--color-surround); color: #fff; place-items: center; font-size: 14px; font-weight: 700; }
+  .tok .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .tok.me { background: var(--color-cork); color: var(--color-cork-ink); }
+  .tok.me .av { background: var(--color-cork-ink); color: var(--color-cork); }
+  .tok.empty { background: transparent; border: 2px dashed rgb(234 243 238 / 0.45); color: rgb(234 243 238 / 0.8); font-weight: 500; }
+  /* Too narrow for the word "Open": show a plus instead of "O…". Phones only: the desktop court is 268px wide too, but its tokens have room. */
+  @media (width < 64rem) {
+    @container (max-width: 270px) { .tok.empty .nm { font-size: 0; } .tok.empty .nm::before { content: "+"; font-size: 1rem; } }
+  }
+  .tok.empty .av { background: rgb(234 243 238 / 0.14); color: var(--color-line); }
+  .court .tokside.dense .tok { height: 26px; font-size: 12px; }
+  .court .tokside.dense4 .tok { height: 21px; font-size: 11px; }
+
+  .plate { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 3; width: clamp(84px, 30cqw, 106px); box-sizing: border-box; padding: 8px 4px 7px; border-radius: 12px; background: var(--color-hall); border: 2px solid var(--color-line); display: flex; flex-direction: column; align-items: center; gap: 5px; }
+  .plate .digits { font-family: var(--font-display); font-weight: 800; font-size: clamp(28px, 11cqw, 36px); line-height: 0.85; color: var(--color-line); font-variant-numeric: tabular-nums; }
+  .plate.wait .digits { color: var(--color-cork); }
+  .plate .plabel { font-family: var(--font-mono); font-size: clamp(8px, 3.2cqw, 9.5px); letter-spacing: 0.08em; white-space: nowrap; color: var(--color-sage); }
+  .plate .segs { display: flex; gap: 1.5px; }
+  .plate .seg { display: block; width: 3px; height: 5px; border-radius: 1px; background: var(--color-line); }
+  .plate .seg.off { background: rgb(234 243 238 / 0.2); }
+  .plate .seg.hot { background: var(--color-cork); }
+  .plate.up { background: var(--color-signal); border-color: #fff; }
+  .plate.up .digits, .plate.up .plabel { color: #fff; }
+  .plate.up .seg { background: rgb(255 255 255 / 0.35); }
+
+  @media (min-width: 1024px) {
+    .mat { padding: 26px; border-radius: 22px; }
+    .court { width: 272px; aspect-ratio: 6.1 / 13.4; }
+    .court .side-a { inset: 0 auto 0 7.54%; width: 2px; height: auto; }
+    .court .side-b { inset: 0 7.54% 0 auto; width: 2px; height: auto; }
+    .court .long-a { inset: 5.67% 0 auto 0; height: 2px; width: auto; }
+    .court .long-b { inset: auto 0 5.67% 0; height: 2px; width: auto; }
+    .court .short-a { inset: 35.22% 0 auto 0; height: 2px; width: auto; }
+    .court .short-b { inset: auto 0 35.22% 0; height: 2px; width: auto; }
+    .court .cen-a { inset: 0 auto auto calc(50% - 1px); width: 2px; height: 35.22%; }
+    .court .cen-b { inset: auto auto 0 calc(50% - 1px); width: 2px; height: 35.22%; }
+    .court .net { inset: calc(50% - 4px) -22px auto -22px; width: auto; height: 9px; border-left: 0; border-top: 3px solid var(--color-feather); background: repeating-linear-gradient(90deg, rgb(241 246 242 / 0.6) 0 1px, transparent 1px 5px); }
+    .court .post { top: calc(50% - 6px); width: 12px; height: 12px; }
+    .court .post-a { left: -28px; bottom: auto; }
+    .court .post-b { left: auto; right: -28px; top: calc(50% - 6px); bottom: auto; }
+    .court .tokgrid { flex-direction: column; padding: 60px 0; }
+    .court .tokside, .court .tokside + .tokside { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; align-content: space-around; gap: 8px 6px; }
+    .tok { width: 112px; height: 44px; padding: 0 10px 0 5px; border-radius: 22px; justify-content: flex-start; font-size: 15px; font-weight: 600; }
+    .tok .av { display: grid; }
+    .tok.empty { padding: 0 10px 0 3px; }
+    .court .tokside.dense .tok, .court .tokside.dense4 .tok { height: 44px; font-size: 15px; }
+    .plate { width: 172px; padding: 11px 12px 10px; border-radius: 16px; gap: 7px; }
+    .plate .digits { font-size: 56px; }
+    .plate .plabel { font-size: 10.5px; letter-spacing: 0.14em; }
+    .plate .segs { gap: 2px; }
+    .plate .seg { width: 5px; height: 6px; }
+  }
+
+  @keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgb(29 107 85 / 0.5); } 50% { box-shadow: 0 0 0 7px rgb(29 107 85 / 0); } }
+  .live-dot { animation: pulse 2s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .live-dot { animation: none; }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .live-dot { animation: none; }
+  /* biome-ignore lint/complexity/noImportantStyles: the standard reduced-motion reset has to beat any authored duration */
   *, ::before, ::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
 
@@ -167,20 +182,7 @@
   --border: oklch(0.205 0.019 171 / 16%);
   --input: oklch(0.205 0.019 171 / 24%);
   --ring: oklch(0.807 0.148 79);
-  --chart-1: oklch(0.475 0.083 170);
-  --chart-2: oklch(0.807 0.148 79);
-  --chart-3: oklch(0.559 0.184 32);
-  --chart-4: oklch(0.759 0.033 169);
-  --chart-5: oklch(0.373 0.061 172);
   --radius: 0.625rem;
-  --sidebar: oklch(0.216 0.021 174);
-  --sidebar-foreground: oklch(0.956 0.012 162);
-  --sidebar-primary: oklch(0.807 0.148 79);
-  --sidebar-primary-foreground: oklch(0.189 0.026 77);
-  --sidebar-accent: oklch(0.373 0.061 172);
-  --sidebar-accent-foreground: oklch(0.956 0.012 162);
-  --sidebar-border: oklch(0.956 0.012 162 / 14%);
-  --sidebar-ring: oklch(0.807 0.148 79);
 }
 
 @layer base {

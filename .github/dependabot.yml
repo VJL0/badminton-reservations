@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # Workflows: actions are pinned to commit SHAs, so Dependabot is what keeps them current
+  # (it updates the SHA and the "# vX.Y.Z" comment together).
+  - package-ecosystem: github-actions
+    directories: ["/", "/.github/actions/setup"]
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    cooldown:
+      default-days: 7 # let a brand-new release settle first: most compromised releases are caught within a week
+
+  - package-ecosystem: npm # also reads pnpm-lock.yaml
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
+    cooldown:
+      default-days: 7

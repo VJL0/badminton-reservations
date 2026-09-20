@@ -42,14 +42,20 @@ export function usePush() {
       }
       if (Notification.permission === "denied") return set("denied");
       try {
-        const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+        const reg = await navigator.serviceWorker.register("/sw.js", {
+          scope: "/",
+          updateViaCache: "none",
+        });
         let sub = await reg.pushManager.getSubscription();
         if (sub && Notification.permission === "granted") {
           // A subscription is tied to the server key it was made with. If the keys were rotated, the old
           // one can never receive anything again: replace it (allowed without a tap, permission is already granted).
-          if (!sameKey(sub.options.applicationServerKey, PUBLIC_KEY!)) {
+          if (!sameKey(sub.options.applicationServerKey, PUBLIC_KEY)) {
             await sub.unsubscribe();
-            sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(PUBLIC_KEY!) });
+            sub = await reg.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: keyBytes(PUBLIC_KEY),
+            });
           }
           set("on");
           void savePushSubscription(sub.toJSON()); // re-claim it for whoever is signed in now
@@ -64,6 +70,7 @@ export function usePush() {
   }, []);
 
   const enable = useCallback(async () => {
+    if (!PUBLIC_KEY) return;
     setBusy(true);
     setError(null);
     try {
@@ -75,7 +82,10 @@ export function usePush() {
       const reg = await navigator.serviceWorker.ready;
       const sub =
         (await reg.pushManager.getSubscription()) ??
-        (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(PUBLIC_KEY!) }));
+        (await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: keyBytes(PUBLIC_KEY),
+        }));
       const res = await savePushSubscription(sub.toJSON());
       if (!res.ok) {
         await sub.unsubscribe();

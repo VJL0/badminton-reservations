@@ -9,11 +9,12 @@ export default function GlobalError({ retry }: { error: Error & { digest?: strin
       <body className="bg-background text-foreground">
         <title>Something went wrong</title>
         <main className="mx-auto flex min-h-dvh max-w-sm flex-col justify-center gap-6 p-6">
-          <h1 className="text-5xl font-extrabold uppercase leading-[0.9]">Foul ball</h1>
-          <p className="text-sm text-muted-foreground">Something went wrong loading the app. Try again.</p>
+          <h1 className="font-extrabold text-5xl uppercase leading-display">Foul ball</h1>
+          <p className="text-muted-foreground text-sm">Something went wrong loading the app. Try again.</p>
           <button
+            type="button"
             onClick={() => retry()}
-            className="h-14 rounded-full bg-primary px-8 text-xl font-extrabold uppercase text-primary-foreground"
+            className="h-14 rounded-full bg-primary px-8 font-extrabold text-primary-foreground text-xl uppercase"
           >
             Try again
           </button>

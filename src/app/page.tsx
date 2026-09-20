@@ -49,12 +49,14 @@ export default async function Home({ searchParams }: PageProps<"/">) {
               autoCapitalize="characters"
               autoComplete="off"
               aria-invalid={!!invalid}
-              className="h-14 rounded-xl px-4 text-center text-xl font-bold uppercase tracking-widest md:text-xl"
+              className="h-14 rounded-xl px-4 text-center font-bold text-xl uppercase tracking-widest md:text-xl"
             />
             {invalid && <FieldError>{notFound ? "No session with that code." : "Enter a valid session code."}</FieldError>}
           </Field>
-          <Button type="submit" className={ctaClass}>Join open play</Button>
-          <p className="text-center text-sm text-muted-foreground">
+          <Button type="submit" className={ctaClass}>
+            Join open play
+          </Button>
+          <p className="text-center text-muted-foreground text-sm">
             Staff?{" "}
             <Link href="/admin/login" className="inline-flex min-h-11 items-center px-2 underline underline-offset-4 hover:text-foreground">
               Sign in

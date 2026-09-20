@@ -140,7 +140,7 @@ select tests.call(tests.uid(5), format('select public.leave_queue(%L)', (select 
 select is((select state::text from public.session_players where player_id = tests.uid(5) and session_id = (select id from t_k)), 'IDLE',
           'a waiting player can leave');
 select throws_ok(format('select tests.join(tests.uid(5), %L)', (select id from t_k)), 'too_fast', 'instant leave/join churn is throttled');
-select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 10,
+select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 9,
           'every table has an explicit deny policy');
 
 -- ---------- choosing a court (queue for a specific court)
@@ -364,8 +364,8 @@ select is((select (j -> 'court_use' ->> 'window_s')::int from t_sum), 7200, 'cou
 select is((select (j -> 'court_use' ->> 'idle_backed_s')::int from t_sum), 300, 'idle court time only counts while a full game was waiting');
 
 -- ---------- push notifications
-insert into public.push_config (key, value) values ('url', 'http://localhost:3000/api/push'), ('secret', 's3cret')
-  on conflict (key) do update set value = excluded.value;  -- a dev database may already be configured; this rolls back
+delete from vault.secrets where name in ('push_url', 'push_secret');  -- a dev database may already be configured; this rolls back
+select vault.create_secret('http://localhost:3000/api/push', 'push_url'), vault.create_secret('s3cret', 'push_secret');
 select tests.call(tests.uid(100), $$select public.create_session('Push', 1, 600, 'PUSHIT')$$);
 create temp table t_ps as select id from public.open_play_sessions where code = 'PUSHIT';
 select throws_ok(format('select tests.call(tests.uid(1), %L)', $$select public.save_push_subscription('http://insecure.example/x', 'k', 'a')$$),

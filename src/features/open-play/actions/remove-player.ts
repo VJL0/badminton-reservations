@@ -1,7 +1,7 @@
 "use server";
 
 import { idSchema } from "../schemas";
-import { callRpc, invalid, type ActionResult } from "./rpc";
+import { type ActionResult, callRpc, invalid } from "./rpc";
 
 export async function removePlayer(sessionId: string, playerId: string): Promise<ActionResult> {
   const s = idSchema.safeParse(sessionId);

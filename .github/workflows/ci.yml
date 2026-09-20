@@ -4,20 +4,37 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+# Nothing gets a token by default; each job asks for exactly what it needs.
+permissions: {}
+
+# A new push to a PR cancels the run it made obsolete. Runs on main always finish.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   app:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
+          persist-credentials: false
+      - uses: $/.github/actions/setup
+      # Biome: format, lint and import order in one pass; annotates the PR diff. Fails on any error.
+      - run: pnpm biome ci --reporter=github
       - run: pnpm typecheck
+      # Next.js keeps its build cache in .next/cache; persisting it makes repeat builds faster.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ hashFiles('src/**', 'next.config.ts') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
       - run: pnpm build
         env:
           NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
@@ -25,15 +42,25 @@ jobs:
 
   database:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
+          persist-credentials: false
+      - uses: $/.github/actions/setup
       - run: pnpm supabase start -x studio,imgproxy,edge-runtime,logflare,vector,mailpit
       - run: pnpm db:test
       - run: pnpm db:concurrency
       - run: pnpm db:advisors
+      - run: pnpm db:lint
+      # The TypeScript types are generated from the schema: fail if someone changed a migration but not the types.
+      - run: pnpm db:types
+      - run: git diff --exit-code src/lib/supabase/database.types.ts
+      # When something above failed, put the local stack's state in the log so the failure can be understood.
+      - name: Supabase diagnostics
+        if: failure()
+        run: |
+          pnpm supabase status || true
+          docker ps --format 'table {{.Names}}\t{{.Status}}'

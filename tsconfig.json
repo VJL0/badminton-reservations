@@ -1,18 +1,30 @@
 {
   "compilerOptions": {
-    "target": "ES2017",
+    // TypeScript 7 defaults (strict, esnext modules, es2025 target, no auto-loaded @types) are spelled out where they matter.
+    "target": "ES2025",
     "lib": ["dom", "dom.iterable", "esnext"],
-    "allowJs": true,
-    "skipLibCheck": true,
+    "types": ["node"],
     "strict": true,
-    "noEmit": true,
-    "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
+    "moduleDetection": "force",
     "jsx": "react-jsx",
+    "noEmit": true,
     "incremental": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+
+    // Bundler-safe syntax only: every file can be compiled on its own (Turbopack, Biome), and type imports stay explicit.
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+
+    // Stricter than `strict`: a lookup that might miss says so in its type, and mistakes in control flow are errors.
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+
     "plugins": [
       {
         "name": "next"
@@ -20,15 +32,12 @@
     ],
     "paths": {
       "@/*": ["./src/*"]
-    }
+    },
+
+    // Next.js insists on these two (its compiler needs esModuleInterop; it re-adds allowJs if removed).
+    "esModuleInterop": true,
+    "allowJs": true
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts",
-    ".next/dev/types/**/*.ts",
-    "**/*.mts"
-  ],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", ".next/dev/types/**/*.ts", "**/*.mts"],
   "exclude": ["node_modules"]
 }

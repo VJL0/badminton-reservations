@@ -23,7 +23,12 @@ export type Court = {
   };
 };
 
-type QueueEntry = { player_id: string; name: string; position: number; court_number: number | null };
+type QueueEntry = {
+  player_id: string;
+  name: string;
+  position: number;
+  court_number: number | null;
+};
 
 export type Snapshot = {
   server_now: string;

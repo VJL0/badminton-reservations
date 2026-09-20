@@ -24,19 +24,20 @@ export function QrButton({ url, code, size = 88 }: { url?: string; code: string;
       >
         {url ? <QRCodeSVG value={url} size={size} /> : <QrPlaceholder size={size} />}
       </button>
+      {/* Escape closes a modal <dialog> natively; clicking the backdrop is just a pointer shortcut. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: see above */}
       <dialog
         ref={dialog}
         onClick={(e) => e.target === dialog.current && dialog.current?.close()}
         className="m-auto w-[min(92vw,30rem)] rounded-3xl bg-white p-6 text-center text-ink backdrop:bg-black/70"
       >
-        <p className="font-mono text-sm uppercase tracking-[0.14em]">Scan to join · {code}</p>
+        <p className="font-mono text-sm uppercase tracking-caps">Scan to join · {code}</p>
         {href && <QRCodeSVG value={href} className="mx-auto my-5 h-auto w-full" size={512} />}
-        <p className="mb-5 break-all text-sm text-ink-2">{href}</p>
+        <p className="wrap-anywhere mb-5 text-ink-2 text-sm">{href}</p>
         <button
           type="button"
-          autoFocus
           onClick={() => dialog.current?.close()}
-          className="h-12 w-full rounded-xl bg-ink text-base font-bold text-white"
+          className="h-12 w-full rounded-xl bg-ink font-bold text-base text-white"
         >
           Close
         </button>

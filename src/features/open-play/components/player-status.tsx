@@ -1,9 +1,9 @@
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ctaClass } from "../styles";
-import { formatRemaining } from "./court-timer";
+import { cn } from "@/lib/utils";
 import { openCourts, remainingMs } from "../eta";
+import { ctaClass } from "../styles";
 import { isUpNext, type Snapshot } from "../types";
+import { formatRemaining } from "./court-timer";
 
 type Props = {
   snapshot: Snapshot;
@@ -17,7 +17,11 @@ type Props = {
   onTogglePause: (roundId: string, pause: boolean) => void;
 };
 
-type Action = { label: string; run: () => void; kind: "join" | "leave" | "urgent" | "plain" };
+type Action = {
+  label: string;
+  run: () => void;
+  kind: "join" | "leave" | "urgent" | "plain";
+};
 
 /**
  * The one line everybody scans for: where am I? Its buttons live in a bar fixed to the bottom of the
@@ -44,12 +48,19 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
     const r = myCourt.round;
     if (r.status === "FILLING") {
       const need = myCourt.capacity - r.players.length;
-      sub = need === 0
-        ? r.start_at ? "The court is full. The game starts automatically." : "The court is full. Start when you're ready."
-        : `Waiting for ${need} more. ${autoStart ? "The game starts when the court is full." : "Press Start when you're ready."}`;
+      sub =
+        need === 0
+          ? r.start_at
+            ? "The court is full. The game starts automatically."
+            : "The court is full. Start when you're ready."
+          : `Waiting for ${need} more. ${autoStart ? "The game starts when the court is full." : "Press Start when you're ready."}`;
       actions = [{ label: "Leave court", run: onLeave, kind: "leave" }];
       if (r.players.length >= 2 && (!autoStart || r.start_at)) {
-        actions.unshift({ label: r.start_at ? "Start now" : "Start game", run: () => onStart(r.id), kind: "plain" });
+        actions.unshift({
+          label: r.start_at ? "Start now" : "Start game",
+          run: () => onStart(r.id),
+          kind: "plain",
+        });
       }
     } else {
       const rem = remainingMs(r, now);
@@ -67,7 +78,11 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
       actions.unshift(
         timeUp
           ? { label: "End game", run: () => onFinish(r.id), kind: "urgent" }
-          : { label: paused ? "Play" : "Pause", run: () => onTogglePause(r.id, !paused), kind: "plain" },
+          : {
+              label: paused ? "Play" : "Pause",
+              run: () => onTogglePause(r.id, !paused),
+              kind: "plain",
+            },
       );
     }
   } else if (me.state === "QUEUED") {
@@ -91,7 +106,7 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
     <section
       role="status"
       className={cn(
-        "flex flex-col gap-4 rounded-[24px] px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:rounded-[28px] lg:px-[34px] lg:py-[26px]",
+        "flex flex-col gap-4 rounded-tile px-5 py-5 lg:flex-row lg:items-center lg:justify-between lg:gap-8 lg:rounded-panel lg:px-[34px] lg:py-[26px]",
         tone === "play" && "bg-mat text-white",
         tone === "next" && "bg-ink text-white ring-4 ring-cork",
         tone === "wait" && "bg-cork text-cork-ink",
@@ -99,12 +114,12 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
       )}
     >
       <div className="flex min-w-0 flex-col gap-1.5 lg:gap-2">
-        {me.display_name && <p className="font-mono text-[11px] uppercase tracking-[0.14em] lg:hidden">{me.display_name}</p>}
-        <h1 className="font-display text-[46px] font-extrabold uppercase leading-[0.9] text-balance lg:text-[54px]">{title}</h1>
-        <p className="max-w-[760px] text-[15px] leading-relaxed lg:text-[17px]">{sub}</p>
+        {me.display_name && <p className="font-mono text-caption uppercase tracking-caps lg:hidden">{me.display_name}</p>}
+        <h1 className="text-balance font-display font-extrabold text-[2.875rem] uppercase leading-display lg:text-[3.375rem]">{title}</h1>
+        <p className="max-w-[760px] text-button leading-relaxed lg:text-[1.0625rem]">{sub}</p>
       </div>
       {actions.length > 0 && (
-        <div className="flex gap-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-10 max-lg:border-t max-lg:border-ink/15 max-lg:bg-chalk max-lg:px-4 max-lg:pb-[calc(env(safe-area-inset-bottom,0px)+16px)] max-lg:pt-3 max-lg:[@media(max-height:500px)]:pb-[calc(env(safe-area-inset-bottom,0px)+8px)] max-lg:[@media(max-height:500px)]:pt-2">
+        <div className="flex gap-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-10 max-lg:border-ink/15 max-lg:border-t max-lg:bg-chalk max-lg:px-4 max-lg:pt-3 max-lg:pb-[calc(env(safe-area-inset-bottom,0px)+16px)] max-lg:[@media(max-height:500px)]:pt-2 max-lg:[@media(max-height:500px)]:pb-[calc(env(safe-area-inset-bottom,0px)+8px)]">
           {actions.map((a) => (
             <Button
               key={a.label}
@@ -112,7 +127,7 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
               className={cn(
                 ctaClass,
                 "min-w-0 flex-1 lg:w-auto lg:flex-none max-lg:[@media(max-height:500px)]:h-11 max-lg:[@media(max-height:500px)]:text-xl",
-                actions.length > 1 && "px-2 text-lg min-[360px]:px-3 min-[360px]:text-xl lg:px-8 lg:text-[26px]",
+                actions.length > 1 && "px-2 xs:px-3 text-lg xs:text-xl lg:px-8 lg:text-[1.625rem]",
                 a.kind === "join" && "hover:bg-primary/85",
                 a.kind === "urgent" && "border-transparent bg-signal text-white hover:bg-signal/90",
                 (a.kind === "leave" || a.kind === "plain") &&
