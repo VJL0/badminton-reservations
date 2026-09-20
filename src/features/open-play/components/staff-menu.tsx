@@ -35,7 +35,7 @@ export function StaffMenu({ name, role }: { name: string | null; role: string })
               <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">{role.toLowerCase()}</p>
             </div>
             <Menu.LinkItem render={<Link href="/admin" />} className={item}>
-              Admin console
+              Officer console
             </Menu.LinkItem>
             {/* A real form so sign out works even before hydration; keep the menu mounted until it submits. */}
             <form action={signOut}>

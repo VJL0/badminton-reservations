@@ -7,7 +7,7 @@ const MESSAGES: Record<string, string> = {
   not_authenticated: "Please enter your name first.",
   profile_required: "Please enter your name first.",
   not_staff: "Only officers can do that.",
-  not_allowed: "Only the players on this court or an officer can end the game.",
+  not_allowed: "Only the players on this court or an officer can start or end the game.",
   game_in_progress: "A game is running on that court. Change its format once the game ends.",
   session_ended: "This session has ended.",
   court_paused: "That court is paused. Pick another, or join any court.",

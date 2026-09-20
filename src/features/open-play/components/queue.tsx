@@ -65,7 +65,7 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
                   </span>
                   <span className={cn("min-w-0 flex-1 truncate text-base lg:text-lg", q ? "font-semibold" : "font-medium")}>{q?.name ?? "Open spot"}</span>
                   {q?.court_number && (
-                    <span className="shrink-0 rounded-full bg-ink/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em]">Ct {q.court_number}</span>
+                    <span className="shrink-0 rounded-full bg-ink/10 px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em]">Court {q.court_number}</span>
                   )}
                   {q && me.role && !isMe && (
                     <Button variant="ghost" size="icon-sm" className="text-ink/50 hover:bg-signal/15 hover:text-signal" onClick={() => onRemove(q.player_id)} aria-label={`Remove ${q.name}`}>
