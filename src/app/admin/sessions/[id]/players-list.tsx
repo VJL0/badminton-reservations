@@ -50,7 +50,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as keyof typeof SORTS)}
-          className="h-11 rounded-xl border border-input bg-white px-3 font-semibold text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-mat"
+          className="h-11 rounded-xl border border-input bg-white px-3 text-sm font-semibold outline-hidden focus-visible:ring-2 focus-visible:ring-mat"
         >
           {Object.entries(SORTS).map(([key, s]) => (
             <option key={key} value={key}>
@@ -66,7 +66,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
             <details className="group">
               <summary className="flex min-h-14 cursor-pointer list-none flex-col justify-center gap-0.5 py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-mat [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="wrap-break-word min-w-0 font-semibold">
+                  <span className="min-w-0 font-semibold wrap-break-word">
                     {p.name}
                     {p.flags.length > 0 && (
                       <span role="img" aria-label="Needs attention" className="ml-2 text-signal">
@@ -78,7 +78,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
                     ⌄
                   </span>
                 </span>
-                <span className="text-muted-foreground text-sm">
+                <span className="text-sm text-muted-foreground">
                   {p.games} {p.games === 1 ? "game" : "games"} · {formatDuration(p.playing_s)} playing
                   {waitTracked && <> · {formatDuration(p.waiting_s)} waiting</>}
                 </span>
@@ -102,7 +102,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
         <button
           type="button"
           onClick={() => setAll((v) => !v)}
-          className="min-h-11 self-start rounded-xl px-2 font-semibold text-sm underline underline-offset-4 outline-hidden focus-visible:ring-2 focus-visible:ring-mat"
+          className="min-h-11 self-start rounded-xl px-2 text-sm font-semibold underline underline-offset-4 outline-hidden focus-visible:ring-2 focus-visible:ring-mat"
         >
           {all ? "Show fewer" : `Show all ${players.length} players`}
         </button>

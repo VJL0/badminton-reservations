@@ -18,15 +18,15 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
   return (
     <section aria-label="Waiting queue" className="flex flex-col gap-4 lg:gap-6">
       <div className="flex flex-wrap items-end justify-between gap-2">
-        <div className="flex items-end gap-3 lg:gap-[18px]">
-          <h2 className="font-display font-extrabold text-[3.25rem] uppercase leading-[0.82] lg:text-[4.25rem]">Waiting</h2>
-          <span className="font-bold font-display text-[3.25rem] text-mat leading-[0.82] lg:text-[4.25rem]">{queue.length}</span>
+        <div className="flex items-end gap-3 lg:gap-4.5">
+          <h2 className="font-display text-[3.25rem] leading-[0.82] font-extrabold uppercase lg:text-[4.25rem]">Waiting</h2>
+          <span className="font-display text-[3.25rem] leading-[0.82] font-bold text-mat lg:text-[4.25rem]">{queue.length}</span>
         </div>
-        <p className="font-mono text-ink-2 text-xs uppercase tracking-label">First in, first on · estimates assume full-length games</p>
+        <p className="font-mono text-xs tracking-label text-ink-2 uppercase">First in, first on · estimates assume full-length games</p>
       </div>
 
       {queue.length === 0 && (
-        <p className="rounded-3xl border-2 border-ink/25 border-dashed px-6 py-6 text-[#3b4c45] text-lg">
+        <p className="rounded-3xl border-2 border-dashed border-ink/25 p-6 text-lg text-[#3b4c45]">
           Nobody&apos;s waiting. Join and you&apos;ll step straight onto a court.
         </p>
       )}
@@ -35,16 +35,16 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
         // biome-ignore lint/suspicious/noArrayIndexKey: rows of four are positional; a row has no identity of its own
         <div key={b} className="grid gap-2 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-center lg:gap-6">
           <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:gap-1.5">
-            <h3 className="shrink-0 whitespace-nowrap font-display font-extrabold text-[1.625rem] uppercase leading-display tracking-display lg:text-[2.125rem]">
+            <h3 className="shrink-0 font-display text-[1.625rem] leading-display font-extrabold tracking-display whitespace-nowrap uppercase lg:text-[2.125rem]">
               {b === 0 ? "Next up" : "Then"}
             </h3>
-            <p className="font-mono text-[#3b4c45] text-caption leading-snug tracking-[0.06em] max-lg:text-right lg:text-xs">
+            <p className="font-mono text-caption leading-snug tracking-[0.06em] text-[#3b4c45] max-lg:text-right lg:text-xs">
               {eta(b * QUEUE_ROW)}
             </p>
           </div>
           <ol
             className={cn(
-              "grid grid-cols-1 xs:grid-cols-2 gap-0.5 overflow-hidden rounded-[18px] border-2 lg:grid-cols-4 lg:rounded-3xl",
+              "grid grid-cols-1 gap-0.5 overflow-hidden rounded-[18px] border-2 xs:grid-cols-2 lg:grid-cols-4 lg:rounded-3xl",
               b === 0 ? "border-ink bg-ink" : "border-ink/15 bg-ink/15",
             )}
           >
@@ -56,13 +56,13 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
                   // biome-ignore lint/suspicious/noArrayIndexKey: slot k of the row; empty slots have no id
                   key={k}
                   className={cn(
-                    "flex h-[58px] items-center gap-2.5 px-3.5 lg:h-[72px] lg:gap-3.5 lg:px-[18px]",
+                    "flex h-14.5 items-center gap-2.5 px-3.5 lg:h-18 lg:gap-3.5 lg:px-4.5",
                     !q ? "bg-chalk text-[#5c6d66]" : isMe ? "bg-cork text-cork-ink" : "bg-[#f5f8f5]",
                   )}
                 >
                   <span
                     className={cn(
-                      "min-w-[26px] font-bold font-display text-[1.875rem] leading-none lg:min-w-[34px] lg:text-[2.375rem]",
+                      "min-w-6.5 font-display text-[1.875rem] leading-none font-bold lg:min-w-8.5 lg:text-[2.375rem]",
                       isMe ? "text-cork-ink/80" : "text-ink-2",
                     )}
                   >
@@ -72,7 +72,7 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
                     {q?.name ?? "Open spot"}
                   </span>
                   {q?.court_number && (
-                    <span className="shrink-0 rounded-full bg-ink/10 px-2 py-0.5 font-mono text-[0.625rem] uppercase tracking-[0.08em]">
+                    <span className="shrink-0 rounded-full bg-ink/10 px-2 py-0.5 font-mono text-[0.625rem] tracking-[0.08em] uppercase">
                       Court {q.court_number}
                     </span>
                   )}

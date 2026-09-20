@@ -12,7 +12,6 @@
     "domains": { "next": "recommended", "react": "recommended", "project": "recommended" },
     "rules": {
       "preset": "recommended",
-      // <Switch> and <Input> are the controls; <FieldLabel>/<Label> are labels. Without this Biome sees a label with no input.
       "a11y": {
         "noLabelWithoutControl": {
           "level": "error",
@@ -21,15 +20,12 @@
       },
       "nursery": {
         "useReactCompiler": "error",
-        "noFloatingPromises": "error",
-        // Tailwind classes in one canonical order (like prettier-plugin-tailwindcss), also inside cn(...) and cva(...).
-        "useSortedClasses": { "level": "error", "options": { "functions": ["cn", "cva"] } }
+        "noFloatingPromises": "error"
       }
     }
   },
   "overrides": [
     {
-      // shadcn/ui components are generated code we keep close to upstream, so upstream's style choices stand.
       "includes": ["src/components/ui/**"],
       "linter": {
         "rules": {

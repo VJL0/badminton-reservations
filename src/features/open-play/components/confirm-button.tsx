@@ -30,7 +30,7 @@ export function ConfirmButton({
     <Button
       variant="outline"
       {...props}
-      className={cn("h-12 rounded-2xl font-semibold text-button", armed ? TONES.urgent : TONES[tone], className)}
+      className={cn("h-12 rounded-2xl text-button font-semibold", armed ? TONES.urgent : TONES[tone], className)}
       onClick={() => {
         if (!armed) {
           setArmed(true);
