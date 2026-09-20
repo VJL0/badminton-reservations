@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
+  api: {
     Tables: {
       [_ in never]: never
     }
@@ -15,453 +15,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-  public: {
-    Tables: {
-      courts: {
-        Row: {
-          capacity: number | null
-          court_number: number
-          created_at: string
-          id: string
-          removed_at: string | null
-          session_id: string
-          side_a_size: number
-          side_b_size: number
-        }
-        Insert: {
-          capacity?: number | null
-          court_number: number
-          created_at?: string
-          id?: string
-          removed_at?: string | null
-          session_id: string
-          side_a_size?: number
-          side_b_size?: number
-        }
-        Update: {
-          capacity?: number | null
-          court_number?: number
-          created_at?: string
-          id?: string
-          removed_at?: string | null
-          session_id?: string
-          side_a_size?: number
-          side_b_size?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "courts_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "open_play_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      open_play_sessions: {
-        Row: {
-          auto_finish: boolean
-          auto_requeue_on_finish: boolean
-          auto_start: boolean
-          code: string
-          created_at: string
-          ended_at: string | null
-          game_duration_seconds: number
-          id: string
-          max_queue_size: number
-          name: string
-          start_delay_seconds: number
-          started_at: string
-          status: Database["public"]["Enums"]["session_status"]
-        }
-        Insert: {
-          auto_finish?: boolean
-          auto_requeue_on_finish?: boolean
-          auto_start?: boolean
-          code: string
-          created_at?: string
-          ended_at?: string | null
-          game_duration_seconds?: number
-          id?: string
-          max_queue_size?: number
-          name: string
-          start_delay_seconds?: number
-          started_at?: string
-          status?: Database["public"]["Enums"]["session_status"]
-        }
-        Update: {
-          auto_finish?: boolean
-          auto_requeue_on_finish?: boolean
-          auto_start?: boolean
-          code?: string
-          created_at?: string
-          ended_at?: string | null
-          game_duration_seconds?: number
-          id?: string
-          max_queue_size?: number
-          name?: string
-          start_delay_seconds?: number
-          started_at?: string
-          status?: Database["public"]["Enums"]["session_status"]
-        }
-        Relationships: []
-      }
-      profiles: {
-        Row: {
-          created_at: string
-          display_name: string
-          id: string
-        }
-        Insert: {
-          created_at?: string
-          display_name: string
-          id: string
-        }
-        Update: {
-          created_at?: string
-          display_name?: string
-          id?: string
-        }
-        Relationships: []
-      }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string
-          endpoint: string
-          p256dh: string
-          player_id: string
-        }
-        Insert: {
-          auth: string
-          created_at?: string
-          endpoint: string
-          p256dh: string
-          player_id: string
-        }
-        Update: {
-          auth?: string
-          created_at?: string
-          endpoint?: string
-          p256dh?: string
-          player_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "push_subscriptions_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      queue_entries: {
-        Row: {
-          ended_at: string | null
-          id: string
-          outcome: Database["public"]["Enums"]["queue_outcome"] | null
-          player_id: string
-          queued_at: string
-          round_id: string | null
-          session_id: string
-        }
-        Insert: {
-          ended_at?: string | null
-          id?: string
-          outcome?: Database["public"]["Enums"]["queue_outcome"] | null
-          player_id: string
-          queued_at: string
-          round_id?: string | null
-          session_id: string
-        }
-        Update: {
-          ended_at?: string | null
-          id?: string
-          outcome?: Database["public"]["Enums"]["queue_outcome"] | null
-          player_id?: string
-          queued_at?: string
-          round_id?: string | null
-          session_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "queue_entries_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "queue_entries_round_id_fkey"
-            columns: ["round_id"]
-            isOneToOne: false
-            referencedRelation: "rounds"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "queue_entries_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "open_play_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      round_players: {
-        Row: {
-          id: string
-          joined_at: string
-          left_at: string | null
-          player_id: string
-          round_id: string
-          slot: number
-        }
-        Insert: {
-          id?: string
-          joined_at?: string
-          left_at?: string | null
-          player_id: string
-          round_id: string
-          slot: number
-        }
-        Update: {
-          id?: string
-          joined_at?: string
-          left_at?: string | null
-          player_id?: string
-          round_id?: string
-          slot?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "round_players_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "round_players_round_id_fkey"
-            columns: ["round_id"]
-            isOneToOne: false
-            referencedRelation: "rounds"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      rounds: {
-        Row: {
-          court_id: string
-          created_at: string
-          ended_at: string | null
-          ends_at: string | null
-          id: string
-          paused_at: string | null
-          session_id: string
-          start_at: string | null
-          started_at: string | null
-          status: Database["public"]["Enums"]["round_status"]
-        }
-        Insert: {
-          court_id: string
-          created_at?: string
-          ended_at?: string | null
-          ends_at?: string | null
-          id?: string
-          paused_at?: string | null
-          session_id: string
-          start_at?: string | null
-          started_at?: string | null
-          status?: Database["public"]["Enums"]["round_status"]
-        }
-        Update: {
-          court_id?: string
-          created_at?: string
-          ended_at?: string | null
-          ends_at?: string | null
-          id?: string
-          paused_at?: string | null
-          session_id?: string
-          start_at?: string | null
-          started_at?: string | null
-          status?: Database["public"]["Enums"]["round_status"]
-        }
-        Relationships: [
-          {
-            foreignKeyName: "rounds_court_id_fkey"
-            columns: ["court_id"]
-            isOneToOne: false
-            referencedRelation: "courts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "rounds_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "open_play_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      session_players: {
-        Row: {
-          current_round_id: string | null
-          joined_at: string
-          notified_next: boolean
-          notified_round_id: string | null
-          player_id: string
-          preferred_court_id: string | null
-          queued_at: string | null
-          session_id: string
-          state: Database["public"]["Enums"]["player_state"]
-          updated_at: string
-        }
-        Insert: {
-          current_round_id?: string | null
-          joined_at?: string
-          notified_next?: boolean
-          notified_round_id?: string | null
-          player_id: string
-          preferred_court_id?: string | null
-          queued_at?: string | null
-          session_id: string
-          state?: Database["public"]["Enums"]["player_state"]
-          updated_at?: string
-        }
-        Update: {
-          current_round_id?: string | null
-          joined_at?: string
-          notified_next?: boolean
-          notified_round_id?: string | null
-          player_id?: string
-          preferred_court_id?: string | null
-          queued_at?: string | null
-          session_id?: string
-          state?: Database["public"]["Enums"]["player_state"]
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "session_players_current_round_id_fkey"
-            columns: ["current_round_id"]
-            isOneToOne: false
-            referencedRelation: "rounds"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "session_players_player_id_fkey"
-            columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "session_players_preferred_court_id_fkey"
-            columns: ["preferred_court_id"]
-            isOneToOne: false
-            referencedRelation: "courts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "session_players_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "open_play_sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      staff: {
-        Row: {
-          created_at: string
-          role: Database["public"]["Enums"]["staff_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          role: Database["public"]["Enums"]["staff_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          role?: Database["public"]["Enums"]["staff_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      _allocate: { Args: { p_session_id: string }; Returns: undefined }
-      _broadcast: { Args: { p_session_id: string }; Returns: undefined }
-      _end_session: { Args: { p_session_id: string }; Returns: undefined }
-      _finish_overdue_rounds: { Args: never; Returns: number }
-      _finish_round: { Args: { p_round_id: string }; Returns: undefined }
-      _leave: {
-        Args: {
-          p_allow_active: boolean
-          p_player_id: string
-          p_session_id: string
-        }
-        Returns: undefined
-      }
-      _lock_session: {
-        Args: { p_session_id: string }
-        Returns: {
-          auto_finish: boolean
-          auto_requeue_on_finish: boolean
-          auto_start: boolean
-          code: string
-          created_at: string
-          ended_at: string | null
-          game_duration_seconds: number
-          id: string
-          max_queue_size: number
-          name: string
-          start_delay_seconds: number
-          started_at: string
-          status: Database["public"]["Enums"]["session_status"]
-        }
-        SetofOptions: {
-          from: "*"
-          to: "open_play_sessions"
-          isOneToOne: true
-          isSetofReturn: false
-        }
-      }
-      _notify: { Args: { p_session_id: string }; Returns: undefined }
-      _release_from_filling: {
-        Args: { p_player_id: string; p_requeue: boolean; p_round_id: string }
-        Returns: undefined
-      }
-      _require_staff: { Args: { p_admin_only?: boolean }; Returns: undefined }
-      _require_user: { Args: never; Returns: string }
-      _staff_role: {
-        Args: never
-        Returns: Database["public"]["Enums"]["staff_role"]
-      }
-      _start_round: { Args: { p_round_id: string }; Returns: undefined }
-      _sync_round: { Args: { p_round_id: string }; Returns: undefined }
       add_court: {
         Args: { p_session_id: string; p_side_a?: number; p_side_b?: number }
         Returns: undefined
@@ -476,6 +29,7 @@ export type Database = {
         }
         Returns: string
       }
+      current_staff_role: { Args: never; Returns: string }
       delete_court: { Args: { p_court_id: string }; Returns: undefined }
       delete_push_subscription: {
         Args: { p_endpoint: string }
@@ -487,6 +41,10 @@ export type Database = {
       get_active_session_code: { Args: never; Returns: string }
       get_session_summary: { Args: { p_session_id: string }; Returns: Json }
       get_snapshot: { Args: { p_code: string }; Returns: Json }
+      grant_staff: {
+        Args: { p_role: string; p_user_id: string }
+        Returns: undefined
+      }
       join_queue: {
         Args: { p_court_id?: string; p_session_id: string }
         Returns: undefined
@@ -494,9 +52,24 @@ export type Database = {
       leave_queue: { Args: { p_session_id: string }; Returns: undefined }
       list_sessions: { Args: never; Returns: Json }
       list_staff: { Args: never; Returns: Json }
+      ops_health: { Args: never; Returns: Json }
       pause_round: { Args: { p_round_id: string }; Returns: undefined }
+      push_ack: { Args: { p_msg_id: number }; Returns: undefined }
+      push_claim: {
+        Args: { p_limit?: number; p_visibility_seconds?: number }
+        Returns: Json
+      }
+      push_forget_subscription: {
+        Args: { p_endpoint: string }
+        Returns: undefined
+      }
+      push_retry: {
+        Args: { p_delay_seconds: number; p_msg_id: number }
+        Returns: undefined
+      }
+      push_subscriptions_of: { Args: { p_user_id: string }; Returns: Json }
       remove_player: {
-        Args: { p_player_id: string; p_session_id: string }
+        Args: { p_participant_id: string; p_session_id: string }
         Returns: undefined
       }
       resume_round: { Args: { p_round_id: string }; Returns: undefined }
@@ -523,11 +96,24 @@ export type Database = {
       }
     }
     Enums: {
-      player_state: "IDLE" | "QUEUED" | "PLAYING"
-      queue_outcome: "ASSIGNED" | "LEFT" | "REMOVED" | "SESSION_ENDED"
-      round_status: "FILLING" | "ACTIVE" | "COMPLETED" | "CANCELLED"
-      session_status: "ACTIVE" | "ENDED"
-      staff_role: "ADMIN" | "OPERATOR"
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -653,17 +239,11 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
+  api: {
     Enums: {},
   },
   public: {
-    Enums: {
-      player_state: ["IDLE", "QUEUED", "PLAYING"],
-      queue_outcome: ["ASSIGNED", "LEFT", "REMOVED", "SESSION_ENDED"],
-      round_status: ["FILLING", "ACTIVE", "COMPLETED", "CANCELLED"],
-      session_status: ["ACTIVE", "ENDED"],
-      staff_role: ["ADMIN", "OPERATOR"],
-    },
+    Enums: {},
   },
 } as const
 
