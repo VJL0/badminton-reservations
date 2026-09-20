@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import { addCourt, updateCourt, updateSessionSettings } from "../actions/session-config";
+import { addCourt, deleteCourt, updateCourt, updateSessionSettings } from "../actions/session-config";
 import type { ActionResult } from "../actions/rpc";
+import { ConfirmButton } from "./confirm-button";
 import { formatLabel, type Snapshot } from "../types";
 
 type Run = (action: () => Promise<ActionResult>) => void;
@@ -53,7 +54,7 @@ function FormatPicker({ a, b, onChange, disabled }: { a: number; b: number; onCh
   );
 }
 
-function CourtRow({ court, busy, run }: { court: Snapshot["courts"][number]; busy: boolean; run: Run }) {
+function CourtRow({ court, only, busy, run }: { court: Snapshot["courts"][number]; only: boolean; busy: boolean; run: Run }) {
   const [a, setA] = useState(court.side_a_size);
   const [b, setB] = useState(court.side_b_size);
   const playing = court.round?.status === "ACTIVE";
@@ -65,7 +66,7 @@ function CourtRow({ court, busy, run }: { court: Snapshot["courts"][number]; bus
     <li className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-baseline gap-2">
         <span className="font-display text-2xl font-extrabold">Court {court.court_number}</span>
-        <span className={label}>{formatLabel(court)}{court.status === "PAUSED" && " · paused"}</span>
+        <span className={label}>{formatLabel(court)}</span>
       </div>
       <div className="flex flex-col gap-1.5 sm:items-end">
         <div className="flex flex-wrap items-center gap-2">
@@ -73,8 +74,15 @@ function CourtRow({ court, busy, run }: { court: Snapshot["courts"][number]; bus
           <Button type="button" size="sm" disabled={busy || playing || !dirty} onClick={() => run(() => updateCourt(court.id, a, b))}>
             Apply
           </Button>
+          <ConfirmButton
+            label="Delete"
+            confirmLabel="Confirm delete"
+            disabled={busy || playing || only}
+            onConfirm={() => run(() => deleteCourt(court.id))}
+          />
         </div>
-        {playing && <p className="text-xs text-ink-2">A game is running. Change the format once it ends.</p>}
+        {playing && <p className="text-xs text-ink-2">A game is running. Change or delete the court once it ends.</p>}
+        {only && !playing && <p className="text-xs text-ink-2">A session needs at least one court.</p>}
         {bumped > 0 && <p className="text-xs text-ink-2">{bumped} waiting {bumped === 1 ? "player goes" : "players go"} back to the queue.</p>}
       </div>
     </li>
@@ -118,7 +126,7 @@ export function SessionSettings({ snapshot, busy, run }: { snapshot: Snapshot; b
             <h3 className="font-display text-xl font-extrabold uppercase tracking-[0.04em]">Courts</h3>
             <ul className="divide-y divide-ink/10">
               {courts.map((c) => (
-                <CourtRow key={`${c.id}-${c.side_a_size}-${c.side_b_size}`} court={c} busy={busy} run={run} />
+                <CourtRow key={`${c.id}-${c.side_a_size}-${c.side_b_size}`} court={c} only={courts.length <= 1} busy={busy} run={run} />
               ))}
             </ul>
             <AddCourt sessionId={session.id} full={courts.length >= 30} busy={busy} run={run} />

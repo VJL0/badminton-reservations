@@ -42,9 +42,9 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave }: Prop
       action = { label: "Leave court", leave: true };
     } else {
       const rem = remainingMs(r, now);
-      const paused = myCourt.status === "PAUSED";
+      const paused = !!r.paused_at;
       sub = paused
-        ? "This court is paused. Your time is on hold."
+        ? "The game is paused. Your time is on hold."
         : rem <= 0
           ? "Time's up. Tap End game on your court so the next players can step on."
           : `${formatRemaining(rem)} left. Done early? Tap End game on your court.`;
@@ -57,7 +57,7 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave }: Prop
     const wanted = courts.find((c) => c.id === me.preferred_court_id);
     title = `You're #${pos} in line`;
     sub = wanted
-      ? `Waiting for court ${wanted.court_number}. ${wanted.status === "PAUSED" ? "It's paused, so switch courts if you don't want to wait." : "You get it when it frees up."}`
+      ? `Waiting for court ${wanted.court_number}. You get it when it frees up.`
       : `${eta(pos - 1) ?? "Waiting for a court"}. You move up as games end.`;
     action = { label: "Leave queue", leave: true };
   } else {

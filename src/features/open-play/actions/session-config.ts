@@ -28,6 +28,11 @@ export async function addCourt(sessionId: string, sideA: number, sideB: number):
   return callRpc("add_court", { p_session_id: id.data, p_side_a: f.data.sideA, p_side_b: f.data.sideB });
 }
 
+export async function deleteCourt(courtId: string): Promise<ActionResult> {
+  const id = idSchema.safeParse(courtId);
+  return id.success ? callRpc("delete_court", { p_court_id: id.data }) : invalid;
+}
+
 export async function updateCourt(courtId: string, sideA: number, sideB: number): Promise<ActionResult> {
   const id = idSchema.safeParse(courtId);
   const f = courtFormatSchema.safeParse({ sideA, sideB });

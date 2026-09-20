@@ -18,7 +18,7 @@ type Props = {
   onQueue: (courtId: string) => void;
   onStart: (roundId: string) => void;
   onFinish: (roundId: string) => void;
-  onTogglePause: (court: Court) => void;
+  onTogglePause: (roundId: string, pause: boolean) => void;
   onRemove: (playerId: string) => void;
 };
 
@@ -34,17 +34,17 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
   const players = round?.players ?? [];
   const isStaff = me.role !== null;
   const mine = round !== null && me.round_id === round.id;
-  const paused = court.status === "PAUSED";
   const active = round?.status === "ACTIVE" && !!round.ends_at;
+  const paused = active && !!round!.paused_at;
   const filling = round?.status === "FILLING";
   const timeUp = active && !paused && remainingMs(round!, now) <= 0;
-  const canEnd = active && (isStaff || mine);
+  const canControl = active && (isStaff || mine);
   const full = players.length >= court.capacity;
   const countingDown = filling && !!round!.start_at;
   // A game can start early (or, with auto-start off, at all) once two are on court.
-  const canStart = filling && !paused && players.length >= 2 && (isStaff || mine);
+  const canStart = filling && players.length >= 2 && (isStaff || mine);
   // Room to step straight on: open court, no game running, a free place.
-  const hasRoom = !paused && round?.status !== "ACTIVE" && !full;
+  const hasRoom = round?.status !== "ACTIVE" && !full;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
 
   const chip = timeUp
@@ -58,11 +58,9 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
           : ["open", "Open"];
   const meta = active
     ? paused
-      ? "Paused. The clock is stopped until an officer resumes."
+      ? "Game paused. The clock is stopped."
       : `${Math.round(durationSeconds / 60)}-minute game${players.length < court.capacity ? ` · ${players.length} of ${court.capacity} on court` : ""}`
-    : paused
-      ? "Paused. Nobody is placed here."
-      : countingDown
+    : countingDown
         ? "Court is full. The game starts automatically."
         : full
           ? "Court is full. Waiting for someone on it to start."
@@ -73,7 +71,7 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
             : "Empty. The next person in line steps on.";
 
   let pick: null | { label: string; disabled: boolean } = null;
-  if (!ended && !paused && me.state !== "PLAYING") {
+  if (!ended && me.state !== "PLAYING") {
     if (me.preferred_court_id === court.id) pick = { label: "You're waiting for this court", disabled: true };
     else if (me.state === "QUEUED") pick = { label: `Switch to court ${court.court_number}`, disabled: false };
     else pick = { label: `${hasRoom ? "Join" : "Queue for"} court ${court.court_number}`, disabled: false };
@@ -144,26 +142,23 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
             {countingDown ? "Start now" : `Start game (${players.length} on court)`}
           </Button>
         )}
-        {(canEnd || isStaff) && (
+        {canControl && round && (
           <div className="flex gap-2">
-            {canEnd && round && (
-              <ConfirmButton
-                label={timeUp ? "End game · bring on the next players" : "End game early"}
-                tone={timeUp ? "urgent" : "hall"}
-                className="flex-1"
-                disabled={busy}
-                onConfirm={() => onFinish(round.id)}
-              />
-            )}
-            {isStaff && (
-              <ConfirmButton
-                label={paused ? "Resume court" : "Pause court"}
-                confirmLabel="Confirm"
-                tone="hall"
-                disabled={busy}
-                onConfirm={() => onTogglePause(court)}
-              />
-            )}
+            <ConfirmButton
+              label={timeUp ? "End game · bring on the next players" : "End game early"}
+              tone={timeUp ? "urgent" : "hall"}
+              className="flex-1"
+              disabled={busy}
+              onConfirm={() => onFinish(round.id)}
+            />
+            <Button
+              variant="outline"
+              className="h-10 border-line/60 bg-transparent text-line hover:bg-line/10 hover:text-line"
+              disabled={busy}
+              onClick={() => onTogglePause(round.id, !paused)}
+            >
+              {paused ? "Play" : "Pause"}
+            </Button>
           </div>
         )}
       </div>

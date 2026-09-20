@@ -6,7 +6,6 @@ type CourtPlayer = { player_id: string; name: string; slot: number };
 export type Court = {
   id: string;
   court_number: number;
-  status: "OPEN" | "PAUSED";
   /** Players per side of the net; capacity is their sum (1v1 = 2, 2v2 = 4, 1v2 = 3 ...). */
   side_a_size: number;
   side_b_size: number;
@@ -18,7 +17,7 @@ export type Court = {
     ends_at: string | null;
     /** A full court is counting down to an automatic start at this time. */
     start_at: string | null;
-    /** The court is paused: the game clock stopped at this time. */
+    /** The game is paused: its clock stopped at this time. */
     paused_at: string | null;
     players: CourtPlayer[];
   };

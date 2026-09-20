@@ -1,5 +1,5 @@
 begin;
-select plan(69);
+select plan(71);
 
 create schema tests;
 -- Run SQL as an authenticated user, then hand the role back (so pgTAP itself
@@ -103,21 +103,25 @@ select is(jsonb_array_length(tests.snapshot(tests.uid(17), 'FRIDAY') -> 'queue')
 select tests.call(tests.uid(17), format('select public.leave_queue(%L)', (select id from t_s)));
 select is((select state::text from public.session_players where player_id = tests.uid(17)), 'IDLE', 'leaving the queue → IDLE');
 
--- ---------- pause: skipped by allocator; pausing a filling court requeues; resume refills
-select tests.call(tests.uid(100), $$select public.create_session('Pause', 2, 600, 'PAUSE')$$);
-create temp table t_p as select id from public.open_play_sessions where code = 'PAUSE';
+-- ---------- deleting a court
+select tests.call(tests.uid(100), $$select public.create_session('Delete', 2, 600, 'DELETE')$$);
+create temp table t_p as select id from public.open_play_sessions where code = 'DELETE';
 create temp table t_pc as select id, court_number from public.courts where session_id = (select id from t_p);
-select tests.call(tests.uid(100), format('select public.pause_court(%L)', (select id from t_pc where court_number = 1)));
+select throws_ok(format('select tests.call(tests.uid(1), %L)', format('select public.delete_court(%L)', (select id from t_pc where court_number = 1))),
+  'not_staff', 'players cannot delete courts');
 select tests.join(tests.uid(21), (select id from t_p));
+select tests.call(tests.uid(100), format('select public.delete_court(%L)', (select id from t_pc where court_number = 1)));
 select is((select c.court_number from public.round_players rp join public.rounds r on r.id = rp.round_id
             join public.courts c on c.id = r.court_id where rp.left_at is null and r.session_id = (select id from t_p)), 2,
-          'paused court is skipped');
-select tests.call(tests.uid(100), format('select public.pause_court(%L)', (select id from t_pc where court_number = 2)));
-select is((select state::text from public.session_players where player_id = tests.uid(21) and session_id = (select id from t_p)), 'QUEUED',
-          'pausing a filling court requeues its players');
-select tests.call(tests.uid(100), format('select public.resume_court(%L)', (select id from t_pc where court_number = 1)));
-select is((select state::text from public.session_players where player_id = tests.uid(21) and session_id = (select id from t_p)), 'PLAYING',
-          'resuming a court refills it from the queue');
+          'deleting a filling court moves its players to another court');
+select is(jsonb_array_length(tests.snapshot(tests.uid(21), 'DELETE') -> 'courts'), 1, 'a deleted court leaves the board');
+select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.delete_court(%L)', (select id from t_pc where court_number = 2))),
+  'last_court', 'the last court cannot be deleted');
+select tests.call(tests.uid(100), format('select public.add_court(%L)', (select id from t_p)));
+select is((select max(court_number)::int from public.courts where session_id = (select id from t_p)), 3, 'new courts never reuse a deleted number');
+select tests.join(tests.uid(n), (select id from t_p)) from generate_series(22, 24) n;
+select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.delete_court(%L)', (select id from t_pc where court_number = 2))),
+  'game_in_progress', 'cannot delete a court with a game running');
 
 -- ---------- constraints
 select throws_ok($$ insert into public.rounds (session_id, court_id)
@@ -167,9 +171,6 @@ select is((select preferred_court_id from public.session_players where player_id
 select tests.join(tests.uid(6), (select id from t_pk));
 select is((select state::text from public.session_players where player_id = tests.uid(6) and session_id = (select id from t_pk)), 'PLAYING',
           'a player after the picker takes a free court');
-select tests.call(tests.uid(100), format('select public.pause_court(%L)', (select id from t_pkc where court_number = 1)));
-select throws_ok(format('select tests.pick(tests.uid(7), %L, %L)', (select id from t_pk), (select id from t_pkc where court_number = 1)),
-  'court_paused', 'cannot pick a paused court');
 select throws_ok(format('select tests.pick(tests.uid(7), %L, gen_random_uuid())', (select id from t_pk)),
   'court_not_found', 'unknown court');
 -- finishing the game on court 3 seats the waiting picker on the same court
@@ -182,16 +183,16 @@ select is((select c.court_number from public.round_players rp join public.rounds
 -- ---------- pausing freezes a running game
 select tests.call(tests.uid(100), $$select public.create_session('Freeze', 1, 600, 'FREEZE')$$);
 create temp table t_fz as select id from public.open_play_sessions where code = 'FREEZE';
-create temp table t_fzc as select id from public.courts where session_id = (select id from t_fz);
+
 select tests.join(tests.uid(n), (select id from t_fz)) from generate_series(1, 4) n;
 update public.rounds set ends_at = now() + interval '5 minutes' where session_id = (select id from t_fz) and status = 'ACTIVE';
-select tests.call(tests.uid(100), format('select public.pause_court(%L)', (select id from t_fzc)));
+select tests.call(tests.uid(100), format('select public.pause_round(%L)', (select id from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE')));
 select ok((select paused_at is not null from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE'),
-          'pausing a running game stops its clock');
-select is((select status::text from public.rounds where session_id = (select id from t_fz) and court_id = (select id from t_fzc) and ended_at is null), 'ACTIVE',
+          'pausing a game stops its clock');
+select is((select status::text from public.rounds where session_id = (select id from t_fz) and ended_at is null), 'ACTIVE',
           'the paused game is still on court');
 update public.rounds set paused_at = now() - interval '2 minutes', ends_at = now() + interval '5 minutes' where session_id = (select id from t_fz) and status = 'ACTIVE';
-select tests.call(tests.uid(100), format('select public.resume_court(%L)', (select id from t_fzc)));
+select tests.call(tests.uid(100), format('select public.resume_round(%L)', (select id from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE')));
 select ok((select ends_at > now() + interval '6 minutes 50 seconds' and paused_at is null from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE'),
           'resuming hands back the paused time');
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { setCourtPaused } from "../actions/court-status";
+import { setRoundPaused } from "../actions/court-status";
 import { finishRound } from "../actions/finish-round";
 import { joinQueue } from "../actions/join-queue";
 import { leaveQueue } from "../actions/leave-queue";
@@ -12,7 +12,7 @@ import { startRound } from "../actions/start-round";
 import { makeEta } from "../eta";
 import { useNow } from "../hooks/use-now";
 import { useSessionRealtime } from "../hooks/use-session-realtime";
-import type { Court, Snapshot } from "../types";
+import type { Snapshot } from "../types";
 import { CourtCard } from "./court-card";
 import { StaffMenu } from "./staff-menu";
 import { QrButton } from "./qr-button";
@@ -34,7 +34,7 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
   // the clock and ignores early or duplicate reports, so a small random delay just spreads the requests.
   const reported = useRef(new Map<string, number>());
   const dueRounds = courts
-    .filter((c) => c.status === "OPEN" && c.round?.status === "FILLING" && c.round.start_at && Date.parse(c.round.start_at) <= now)
+    .filter((c) => c.round?.status === "FILLING" && c.round.start_at && Date.parse(c.round.start_at) <= now)
     .map((c) => c.round!.id)
     .join(",");
   useEffect(() => {
@@ -124,7 +124,7 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
               onQueue={(courtId) => run(() => joinQueue(session.id, courtId))}
               onStart={(roundId) => run(() => startRound(roundId))}
               onFinish={(roundId) => run(() => finishRound(roundId))}
-              onTogglePause={(c: Court) => run(() => setCourtPaused(c.id, c.status === "OPEN"))}
+              onTogglePause={(roundId, pause) => run(() => setRoundPaused(roundId, pause))}
               onRemove={(playerId) => run(() => removePlayer(session.id, playerId))}
             />
           ))}
