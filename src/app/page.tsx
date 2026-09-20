@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CenteredPage } from "@/components/page-shell";
+import { WaitingForSession } from "@/features/open-play/components/waiting-for-session";
 import { getActiveSessionCode } from "@/lib/supabase/active-session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -10,7 +11,11 @@ export default async function Home() {
   if (live) redirect(`/play/${live}`);
 
   return (
-    <CenteredPage title="Badminton Queue" description="No open play is running right now. Scan the poster's QR code again once it starts.">
+    <CenteredPage
+      title="Badminton Queue"
+      description="No open play is running right now. Keep this page open: the queue appears as soon as a session starts."
+    >
+      <WaitingForSession />
       <p className="text-sm text-muted-foreground">
         Staff?{" "}
         <Link href="/admin/login" className="inline-flex min-h-11 items-center px-2 underline underline-offset-4 hover:text-foreground">

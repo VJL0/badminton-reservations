@@ -195,6 +195,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         eta={eta}
         busy={pending}
         onJoin={() => run(() => joinQueue(session.id))}
+        onHome={() => router.push("/")}
         onLeave={() => run(() => leaveQueue(session.id))}
         onStart={(roundId) => run(() => startRound(roundId))}
         onFinish={(roundId) => run(() => finishRound(roundId))}

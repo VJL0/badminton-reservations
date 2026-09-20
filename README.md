@@ -16,6 +16,7 @@ shared queue that feeds every court. Not a reservation system — a state machin
 
 - **One session at a time.** The poster's QR points at `/`, which sends players to whichever session is live. The database
   refuses a second live session (`already_active`); end tonight's before starting the next.
+  When nothing is live, `/` waits and opens the queue by itself the moment a session starts; an ended board has a **Back to home** button.
 - **One FIFO queue.** Joining always enqueues first; the allocator then places players. A player can pick a specific court
   (they only take that one) and can switch while queued without losing their place.
 - **Courts have formats** (1v1, 2v2, 1v2 ... up to 4 a side) and admins can add, delete or reformat them during a session.
