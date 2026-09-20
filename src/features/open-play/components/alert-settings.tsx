@@ -78,10 +78,7 @@ export function AlertSettings({
             )}
           </div>
           {push.state === "needs-install" && (
-            <p className="text-xs text-ink-2">
-              On iPhone, notifications only work for an app on your Home Screen. Tap Share, then &ldquo;Add to Home Screen&rdquo;, and open
-              it from there.
-            </p>
+            <p className="text-xs text-ink-2">On iPhone, notifications only work once the app is on your Home Screen. Steps are below.</p>
           )}
           {push.state === "denied" && (
             <p className="text-xs text-ink-2">Notifications are blocked. Allow them for this site in your browser or phone settings.</p>

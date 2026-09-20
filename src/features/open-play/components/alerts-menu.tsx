@@ -6,6 +6,7 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import { useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import { AlertSettings, type Push } from "./alert-settings";
+import { InstallApp } from "./install-app";
 import { PanelBoundary } from "./panel-boundary";
 
 const PROMPT_KEY = "open-play-alerts-prompt-dismissed";
@@ -73,8 +74,8 @@ export function AlertsMenu({
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner align="end" sideOffset={8} className="z-50">
-          <Popover.Popup className="w-[min(calc(100vw-2rem),22rem)] rounded-xl border bg-white p-4 text-ink shadow-lg outline-hidden">
-            <Popover.Title className="mb-3 font-mono text-caption tracking-caps text-ink-2 uppercase">Alerts</Popover.Title>
+          <Popover.Popup className="flex w-[min(calc(100vw-2rem),22rem)] flex-col gap-3 rounded-xl border bg-white p-4 text-ink shadow-lg outline-hidden">
+            <Popover.Title className="font-mono text-caption tracking-caps text-ink-2 uppercase">Alerts</Popover.Title>
             <PanelBoundary label="Alerts">
               <AlertSettings
                 sound={alerts.enabled}
@@ -83,6 +84,9 @@ export function AlertsMenu({
                 canVibrate={alerts.canVibrate}
                 push={push}
               />
+            </PanelBoundary>
+            <PanelBoundary label="Install">
+              <InstallApp />
             </PanelBoundary>
           </Popover.Popup>
         </Popover.Positioner>
