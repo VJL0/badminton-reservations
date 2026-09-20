@@ -102,14 +102,15 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave, onStar
         <p className="max-w-[760px] text-[15px] leading-relaxed lg:text-[17px]">{sub}</p>
       </div>
       {actions.length > 0 && (
-        <div className="flex gap-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-10 max-lg:border-t max-lg:border-ink/15 max-lg:bg-chalk max-lg:px-4 max-lg:pb-[calc(env(safe-area-inset-bottom,0px)+16px)] max-lg:pt-3">
+        <div className="flex gap-3 max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:z-10 max-lg:border-t max-lg:border-ink/15 max-lg:bg-chalk max-lg:px-4 max-lg:pb-[calc(env(safe-area-inset-bottom,0px)+16px)] max-lg:pt-3 max-lg:[@media(max-height:500px)]:pb-[calc(env(safe-area-inset-bottom,0px)+8px)] max-lg:[@media(max-height:500px)]:pt-2">
           {actions.map((a) => (
             <Button
               key={a.label}
               variant={a.kind === "leave" || a.kind === "plain" ? "outline" : "default"}
               className={cn(
                 ctaClass,
-                "flex-1 lg:w-auto lg:flex-none",
+                "min-w-0 flex-1 lg:w-auto lg:flex-none max-lg:[@media(max-height:500px)]:h-11 max-lg:[@media(max-height:500px)]:text-xl",
+                actions.length > 1 && "px-2 text-lg min-[360px]:px-3 min-[360px]:text-xl lg:px-8 lg:text-[26px]",
                 a.kind === "join" && "hover:bg-primary/85",
                 a.kind === "urgent" && "border-transparent bg-signal text-white hover:bg-signal/90",
                 (a.kind === "leave" || a.kind === "plain") &&

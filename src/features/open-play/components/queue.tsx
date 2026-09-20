@@ -38,14 +38,14 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
       {batches.map((batch, b) => (
         <div key={b} className="grid gap-2 lg:grid-cols-[210px_minmax(0,1fr)] lg:items-center lg:gap-6">
           <div className="flex items-baseline justify-between gap-3 lg:flex-col lg:items-start lg:gap-1.5">
-            <h3 className="font-display text-[26px] font-extrabold uppercase leading-[0.9] tracking-[0.03em] lg:text-[34px]">
+            <h3 className="shrink-0 whitespace-nowrap font-display text-[26px] font-extrabold uppercase leading-[0.9] tracking-[0.03em] lg:text-[34px]">
               {b === 0 ? "Next up" : "Then"}
             </h3>
             <p className="font-mono text-[11px] leading-snug tracking-[0.06em] text-[#3b4c45] max-lg:text-right lg:text-xs">{eta(b * QUEUE_ROW)}</p>
           </div>
           <ol
             className={cn(
-              "grid grid-cols-2 gap-0.5 overflow-hidden rounded-[18px] border-2 lg:grid-cols-4 lg:rounded-3xl",
+              "grid grid-cols-1 gap-0.5 overflow-hidden rounded-[18px] border-2 min-[360px]:grid-cols-2 lg:grid-cols-4 lg:rounded-3xl",
               b === 0 ? "border-ink bg-ink" : "border-ink/15 bg-ink/15",
             )}
           >

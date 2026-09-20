@@ -51,11 +51,11 @@ export default async function SessionDetailsPage({ params }: PageProps<"/admin/s
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-4 py-6 lg:gap-8 lg:px-8 lg:py-10">
       <header className="flex flex-col gap-2">
-        <Link href="/admin" className="text-sm text-muted-foreground underline underline-offset-4">
+        <Link href="/admin" className="inline-flex min-h-11 w-fit items-center text-sm text-muted-foreground underline underline-offset-4">
           ← All sessions
         </Link>
-        <div className="flex items-center gap-2">
-          <h1 className="truncate font-display text-4xl font-extrabold uppercase tracking-[0.03em]">{session.name}</h1>
+        <div className="flex flex-wrap items-center gap-x-2">
+          <h1 className="min-w-0 break-words font-display text-4xl font-extrabold uppercase tracking-[0.03em]">{session.name}</h1>
           <Badge className={session.status === "ACTIVE" ? "bg-mat text-white" : ""} variant={session.status === "ACTIVE" ? "default" : "secondary"}>
             {session.status === "ACTIVE" ? "Live" : "Ended"}
           </Badge>
@@ -83,7 +83,7 @@ export default async function SessionDetailsPage({ params }: PageProps<"/admin/s
                   <p className="truncate font-semibold">{p.name}</p>
                   <p className={meta}>First joined <LocalTime iso={p.joined_at} part="time" /></p>
                 </div>
-                <p className={meta}>{p.games} {p.games === 1 ? "game" : "games"}</p>
+                <p className={`${meta} shrink-0 whitespace-nowrap`}>{p.games} {p.games === 1 ? "game" : "games"}</p>
               </li>
             ))}
           </ul>

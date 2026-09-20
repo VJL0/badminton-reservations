@@ -115,19 +115,19 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   return (
     <main className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pb-32 pt-5 lg:gap-7 lg:px-14 lg:pb-16 lg:pt-10">
       <header className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-2.5 lg:gap-3.5">
+        <div className="flex min-w-0 items-center gap-2.5 lg:gap-3.5">
           <span className="hidden text-ink lg:flex"><ShuttleIcon size={44} /></span>
           <span className="flex text-ink lg:hidden"><ShuttleIcon size={32} /></span>
-          <div className="flex flex-col gap-1">
-            <p className="font-display text-2xl font-extrabold uppercase leading-[0.9] tracking-[0.03em] lg:text-[32px]">{session.name}</p>
+          <div className="flex min-w-0 flex-col gap-1">
+            <p className="break-words font-display text-2xl font-extrabold uppercase leading-[0.9] tracking-[0.03em] lg:text-[32px]">{session.name}</p>
             <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-2 lg:text-xs lg:tracking-[0.14em]">Open play · {session.code}</p>
           </div>
         </div>
-        <div className="flex items-center gap-4 lg:gap-6">
+        <div className="flex shrink-0 items-center gap-3 lg:gap-6">
           {session.status === "ACTIVE" && <QrButton code={session.code} size={36} />}
           <span className="flex items-center gap-2 font-mono text-[11px] font-medium tracking-[0.14em] text-mat lg:text-xs">
             <i className={`live-dot size-2 rounded-full ${connected ? "bg-mat" : "bg-cork"}`} />
-            {connected ? "LIVE" : "RECONNECTING"}
+            <span className="max-[379px]:sr-only">{connected ? "LIVE" : "RECONNECTING"}</span>
           </span>
           {me.role ? (
             <StaffMenu name={me.display_name} role={me.role} />
@@ -192,7 +192,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         </div>
       </section>
 
-      <Queue queue={queue} me={me} eta={eta} onRemove={(playerId) => run(() => removePlayer(session.id, playerId))} />
+      {session.status === "ACTIVE" && <Queue queue={queue} me={me} eta={eta} onRemove={(playerId) => run(() => removePlayer(session.id, playerId))} />}
     </main>
   );
 }

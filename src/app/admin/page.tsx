@@ -106,30 +106,26 @@ export default async function AdminPage() {
           <Card key={s.id}>
             <CardContent className="flex flex-wrap items-center gap-4">
               {s.status === "ACTIVE" && <SessionQr url={`${origin}/play/${s.code}`} code={s.code} />}
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <h2 className="truncate font-display text-2xl font-extrabold uppercase tracking-[0.03em]">{s.name}</h2>
+              <div className="flex min-w-[10rem] flex-1 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-x-2">
+                  <h2 className="break-words font-display text-2xl font-extrabold uppercase tracking-[0.03em]">{s.name}</h2>
                   <Badge className={s.status === "ACTIVE" ? "bg-mat text-white" : ""} variant={s.status === "ACTIVE" ? "default" : "secondary"}>
                     {s.status === "ACTIVE" ? "Live" : "Ended"}
                   </Badge>
                 </div>
                 <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
-                  <a className="underline underline-offset-4" href={`/play/${s.code}`}>
-                    /play/{s.code}
-                  </a>{" "}
-                  · {s.courts} courts · {s.players} players ·{" "}
+                  /play/{s.code} · {s.courts} courts · {s.players} players
+                </p>
+                <nav aria-label={`${s.name} links`} className="-mx-1 flex flex-wrap font-mono text-xs uppercase tracking-[0.1em]">
                   {s.status === "ACTIVE" && (
-                    <>
-                      <a className="underline underline-offset-4" href={`/play/${s.code}`}>
-                        Live board &amp; settings
-                      </a>{" "}
-                      ·{" "}
-                    </>
+                    <a className="inline-flex min-h-11 items-center px-1 underline underline-offset-4" href={`/play/${s.code}`}>
+                      Live board &amp; settings
+                    </a>
                   )}
-                  <Link className="underline underline-offset-4" href={`/admin/sessions/${s.id}`}>
+                  <Link className="inline-flex min-h-11 items-center px-1 underline underline-offset-4" href={`/admin/sessions/${s.id}`}>
                     Details
                   </Link>
-                </p>
+                </nav>
               </div>
               {s.status === "ACTIVE" && <EndSessionButton sessionId={s.id} />}
             </CardContent>
@@ -143,8 +139,8 @@ export default async function AdminPage() {
           {staff.map((m) => (
             <Card key={m.user_id}>
               <CardContent className="flex flex-wrap items-center gap-4">
-                <div className="flex min-w-0 flex-1 flex-col gap-1">
-                  <p className="truncate font-semibold">
+                <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
+                  <p className="break-all font-semibold">
                     {m.email}
                     {m.user_id === myId && <span className="text-muted-foreground"> (you)</span>}
                   </p>

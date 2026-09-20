@@ -47,7 +47,9 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
   const hasRoom = round?.status !== "ACTIVE" && !full;
   const bySlot = new Map(players.map((p) => [p.slot, p]));
 
-  const chip = timeUp
+  const chip = ended
+    ? ["open", "Closed"]
+    : timeUp
     ? ["up", "Time's up"]
     : paused
       ? ["open", "Paused"]
@@ -56,7 +58,9 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
         : players.length
           ? ["fill", "Filling"]
           : ["open", "Open"];
-  const meta = active
+  const meta = ended
+    ? "This session has ended."
+    : active
     ? paused
       ? "Game paused. The clock is stopped."
       : `${Math.round(durationSeconds / 60)}-minute game${players.length < court.capacity ? ` · ${players.length} of ${court.capacity} on court` : ""}`
@@ -90,11 +94,11 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
     );
   };
   const side = (from: number, size: number) => (
-    <div className={cn("tokside", size > 2 && "dense")}>{Array.from({ length: size }, (_, i) => slot(from + i))}</div>
+    <div className={cn("tokside", size > 3 ? "dense4" : size > 2 && "dense")}>{Array.from({ length: size }, (_, i) => slot(from + i))}</div>
   );
 
   return (
-    <section aria-label={`Court ${court.court_number}`} className="mx-auto flex w-full max-w-[520px] flex-col gap-3 lg:max-w-[324px] lg:gap-[18px]">
+    <section aria-label={`Court ${court.court_number}`} className="mx-auto flex w-full min-w-0 max-w-[520px] flex-col gap-3 lg:max-w-[324px] lg:gap-[18px]">
       <header className="flex items-end justify-between">
         <div className="flex items-end gap-2 lg:gap-3">
           <span className="font-display text-[40px] font-extrabold leading-[0.8] text-line lg:text-[104px]">{court.court_number}</span>
@@ -118,12 +122,16 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
             {side(1, court.side_a_size)}
             {side(court.side_a_size + 1, court.side_b_size)}
           </div>
-          <TimerPlate court={court} now={now} durationSeconds={durationSeconds} />
+          <TimerPlate court={court} now={now} durationSeconds={durationSeconds} ended={ended} />
         </div>
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 lg:min-h-[64px]">
         <p className="text-sm leading-snug text-sage">{meta}</p>
+        {players.length > 0 && (
+          // On the narrowest phones the tokens can only show a few letters, so spell the names out.
+          <p className="text-sm leading-snug text-line min-[360px]:hidden">{players.map((p) => p.name).join(", ")}</p>
+        )}
         {pick && (
           <Button
             className="h-12 rounded-2xl bg-signal text-[15px] font-semibold text-white hover:bg-signal/90"
@@ -145,15 +153,15 @@ export function CourtCard({ court, me, now, durationSeconds, autoStart, ended, b
         {canControl && round && (
           <div className="flex gap-2">
             <ConfirmButton
-              label={timeUp ? "End game · bring on the next players" : "End game early"}
+              label={timeUp ? "End game (time's up)" : "End game early"}
               tone={timeUp ? "urgent" : "hall"}
-              className="flex-1"
+              className="h-auto min-h-12 min-w-0 flex-1 whitespace-normal py-2 leading-tight"
               disabled={busy}
               onConfirm={() => onFinish(round.id)}
             />
             <Button
               variant="outline"
-              className="h-12 rounded-2xl px-5 text-[15px] font-semibold border-line/60 bg-transparent text-line hover:bg-line/10 hover:text-line"
+              className="h-12 shrink-0 rounded-2xl px-5 text-[15px] font-semibold border-line/60 bg-transparent text-line hover:bg-line/10 hover:text-line"
               disabled={busy}
               onClick={() => onTogglePause(round.id, !paused)}
             >

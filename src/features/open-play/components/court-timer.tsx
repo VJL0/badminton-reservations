@@ -8,7 +8,7 @@ export function formatRemaining(ms: number) {
 }
 
 /** The plate on the net. One segment per minute left in the game. */
-export function TimerPlate({ court, now, durationSeconds }: { court: Court; now: number; durationSeconds: number }) {
+export function TimerPlate({ court, now, durationSeconds, ended = false }: { court: Court; now: number; durationSeconds: number; ended?: boolean }) {
   const round = court.round;
   const n = round?.players.length ?? 0;
   const active = round?.status === "ACTIVE" && !!round.ends_at;
@@ -20,14 +20,18 @@ export function TimerPlate({ court, now, durationSeconds }: { court: Court; now:
   const lit = active ? Math.min(segments, Math.ceil(Math.max(0, remaining) / 60_000)) : 0;
 
   const cls = timeUp ? "up" : active && !paused ? "live" : "wait";
-  const value = active
+  const value = ended && !active
+    ? "CLOSED"
+    : active
     ? formatRemaining(remaining)
     : countdown !== null
       ? formatRemaining(countdown)
       : n
         ? `${n}/${court.capacity}`
         : "OPEN";
-  const label = timeUp
+  const label = ended && !active
+    ? "SESSION ENDED"
+    : timeUp
     ? "TIME'S UP"
     : active
       ? paused

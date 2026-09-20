@@ -56,7 +56,7 @@ export default async function Home({ searchParams }: PageProps<"/">) {
           <Button type="submit" className={ctaClass}>Join open play</Button>
           <p className="text-center text-sm text-muted-foreground">
             Staff?{" "}
-            <Link href="/admin/login" className="underline underline-offset-4 hover:text-foreground">
+            <Link href="/admin/login" className="inline-flex min-h-11 items-center px-2 underline underline-offset-4 hover:text-foreground">
               Sign in
             </Link>
           </p>
