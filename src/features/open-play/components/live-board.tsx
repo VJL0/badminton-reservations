@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { setCourtPaused } from "../actions/court-status";
 import { finishRound } from "../actions/finish-round";
-import { joinCourt } from "../actions/join-court";
 import { joinQueue } from "../actions/join-queue";
 import { leaveQueue } from "../actions/leave-queue";
 import { removePlayer } from "../actions/remove-player";
 import type { ActionResult } from "../actions/rpc";
+import { startRound } from "../actions/start-round";
 import { makeEta } from "../eta";
 import { useNow } from "../hooks/use-now";
 import { useSessionRealtime } from "../hooks/use-session-realtime";
@@ -18,6 +18,7 @@ import { StaffMenu } from "./staff-menu";
 import { QrButton } from "./qr-button";
 import { PlayerStatus } from "./player-status";
 import { Queue } from "./queue";
+import { SessionSettings } from "./session-settings";
 import { ShuttleIcon } from "./shuttle-icon";
 
 export function LiveBoard({ initial }: { initial: Snapshot }) {
@@ -28,6 +29,27 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
 
   const { session, me, courts, queue } = snapshot;
   const eta = makeEta(snapshot, now);
+
+  // Auto-start: when a full court's countdown runs out, whoever is looking reports it. The database checks
+  // the clock and ignores early or duplicate reports, so a small random delay just spreads the requests.
+  const reported = useRef(new Map<string, number>());
+  const dueRounds = courts
+    .filter((c) => c.status === "OPEN" && c.round?.status === "FILLING" && c.round.start_at && Date.parse(c.round.start_at) <= now)
+    .map((c) => c.round!.id)
+    .join(",");
+  useEffect(() => {
+    const timers = dueRounds
+      .split(",")
+      .filter(Boolean)
+      .filter((id) => Date.now() - (reported.current.get(id) ?? 0) > 5000) // retry a failed report every 5s
+      .map((id) =>
+        setTimeout(() => {
+          reported.current.set(id, Date.now());
+          void startRound(id).then(() => refresh());
+        }, Math.random() * 1000),
+      );
+    return () => timers.forEach(clearTimeout);
+  }, [dueRounds, now, refresh]);
 
   function run(action: () => Promise<ActionResult>) {
     setError(null);
@@ -74,6 +96,7 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
         onJoin={() => run(() => joinQueue(session.id))}
         onLeave={() => run(() => leaveQueue(session.id))}
       />
+      {me.role === "ADMIN" && session.status === "ACTIVE" && <SessionSettings snapshot={snapshot} busy={pending} run={run} />}
       {error && (
         <Alert variant="destructive">
           <AlertDescription>{error}</AlertDescription>
@@ -84,7 +107,7 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
           <h2 className="font-display text-[28px] font-extrabold uppercase tracking-[0.05em] text-line lg:text-4xl">The courts</h2>
           <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-sage lg:text-xs">
-            Four to a court · {Math.round(session.game_duration_seconds / 60)}-minute games
+            {Math.round(session.game_duration_seconds / 60)}-minute games · {session.auto_start ? "auto-start" : "manual start"}
           </p>
         </div>
         <div className="grid gap-9 lg:grid-cols-3 lg:gap-6">
@@ -95,9 +118,11 @@ export function LiveBoard({ initial }: { initial: Snapshot }) {
               me={me}
               now={now}
               durationSeconds={session.game_duration_seconds}
+              autoStart={session.auto_start}
+              ended={session.status === "ENDED"}
               busy={pending}
-              canPick={me.state === "IDLE" && session.status === "ACTIVE"}
-              onJoin={(courtId) => run(() => joinCourt(courtId))}
+              onQueue={(courtId) => run(() => joinQueue(session.id, courtId))}
+              onStart={(roundId) => run(() => startRound(roundId))}
               onFinish={(roundId) => run(() => finishRound(roundId))}
               onTogglePause={(c: Court) => run(() => setCourtPaused(c.id, c.status === "OPEN"))}
               onRemove={(playerId) => run(() => removePlayer(session.id, playerId))}

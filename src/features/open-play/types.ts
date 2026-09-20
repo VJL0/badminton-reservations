@@ -7,16 +7,24 @@ export type Court = {
   id: string;
   court_number: number;
   status: "OPEN" | "PAUSED";
+  /** Players per side of the net; capacity is their sum (1v1 = 2, 2v2 = 4, 1v2 = 3 ...). */
+  side_a_size: number;
+  side_b_size: number;
+  capacity: number;
   round: null | {
     id: string;
     status: RoundStatus;
     started_at: string | null;
     ends_at: string | null;
+    /** A full court is counting down to an automatic start at this time. */
+    start_at: string | null;
+    /** The court is paused: the game clock stopped at this time. */
+    paused_at: string | null;
     players: CourtPlayer[];
   };
 };
 
-type QueueEntry = { player_id: string; name: string; position: number };
+type QueueEntry = { player_id: string; name: string; position: number; court_number: number | null };
 
 export type Snapshot = {
   server_now: string;
@@ -26,12 +34,16 @@ export type Snapshot = {
     name: string;
     status: "ACTIVE" | "ENDED";
     game_duration_seconds: number;
+    auto_requeue_on_finish: boolean;
+    auto_start: boolean;
+    start_delay_seconds: number;
   };
   me: {
     id: string;
     display_name: string | null;
     state: PlayerState;
     round_id: string | null;
+    preferred_court_id: string | null;
     queue_position: number | null;
     role: "ADMIN" | "OPERATOR" | null;
   };
@@ -39,4 +51,7 @@ export type Snapshot = {
   queue: QueueEntry[];
 };
 
-export const PLAYERS_PER_COURT = 4;
+/** The queue is drawn in rows of four, whatever the courts hold. */
+export const QUEUE_ROW = 4;
+
+export const formatLabel = (c: Pick<Court, "side_a_size" | "side_b_size">) => `${c.side_a_size}v${c.side_b_size}`;

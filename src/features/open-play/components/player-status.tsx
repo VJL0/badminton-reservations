@@ -2,8 +2,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ctaClass } from "../styles";
 import { formatRemaining } from "./court-timer";
-import { openCourts } from "../eta";
-import { PLAYERS_PER_COURT, type Snapshot } from "../types";
+import { openCourts, remainingMs } from "../eta";
+import { type Snapshot } from "../types";
 
 type Props = {
   snapshot: Snapshot;
@@ -19,6 +19,7 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave }: Prop
   const { me, courts, session, queue } = snapshot;
   const myCourt = courts.find((c) => c.round && c.round.id === me.round_id);
   const ended = session.status === "ENDED";
+  const autoStart = session.auto_start;
 
   let tone: "play" | "wait" | "idle" = "idle";
   let title = "You're not in the queue";
@@ -34,27 +35,36 @@ export function PlayerStatus({ snapshot, now, eta, busy, onJoin, onLeave }: Prop
     title = `You're on court ${myCourt.court_number}`;
     const r = myCourt.round;
     if (r.status === "FILLING") {
-      const need = PLAYERS_PER_COURT - r.players.length;
-      sub = `Waiting for ${need} more. The timer starts when the fourth player arrives.`;
+      const need = myCourt.capacity - r.players.length;
+      sub = need === 0
+        ? r.start_at ? "The court is full. The game starts automatically." : "The court is full. Someone on it presses Start."
+        : `Waiting for ${need} more. ${autoStart ? "The game starts when the court is full." : "Press Start on the court when you're ready."}`;
       action = { label: "Leave court", leave: true };
     } else {
-      const rem = Date.parse(r.ends_at!) - now;
-      sub = rem <= 0
-        ? "Time's up. Tap End game on your court so the next four can step on."
-        : `${formatRemaining(rem)} left. Done early? Tap End game on your court and the next four step on.`;
-      action = null;
+      const rem = remainingMs(r, now);
+      const paused = myCourt.status === "PAUSED";
+      sub = paused
+        ? "This court is paused. Your time is on hold."
+        : rem <= 0
+          ? "Time's up. Tap End game on your court so the next players can step on."
+          : `${formatRemaining(rem)} left. Done early? Tap End game on your court.`;
+      sub += " Leaving lets the game carry on without you.";
+      action = { label: "Leave game", leave: true };
     }
   } else if (me.state === "QUEUED") {
     tone = "wait";
     const pos = me.queue_position ?? 1;
+    const wanted = courts.find((c) => c.id === me.preferred_court_id);
     title = `You're #${pos} in line`;
-    sub = `${eta(Math.floor((pos - 1) / PLAYERS_PER_COURT)) ?? "Waiting for a court"}. You move up as games end.`;
+    sub = wanted
+      ? `Waiting for court ${wanted.court_number}. ${wanted.status === "PAUSED" ? "It's paused, so switch courts if you don't want to wait." : "You get it when it frees up."}`
+      : `${eta(pos - 1) ?? "Waiting for a court"}. You move up as games end.`;
     action = { label: "Leave queue", leave: true };
   } else {
     const open = queue.length === 0 ? openCourts(courts)[0] : undefined;
     sub = open
-      ? `Join and you'll go straight onto Court ${open.court_number} (${open.round?.players.length ?? 0} of 4 there).`
-      : `Join and you'll be #${queue.length + 1} in line. ${eta(Math.floor(queue.length / PLAYERS_PER_COURT)) ?? ""}`.trim();
+      ? `Join and you'll go straight onto Court ${open.court_number} (${open.round?.players.length ?? 0} of ${open.capacity} there). Or pick a court below.`
+      : `Join and you'll be #${queue.length + 1} in line. ${eta(queue.length) ?? ""}`.trim();
   }
 
   return (

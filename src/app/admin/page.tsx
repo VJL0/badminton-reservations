@@ -116,6 +116,14 @@ export default async function AdminPage() {
                     /play/{s.code}
                   </a>{" "}
                   · {s.courts} courts · {s.players} players ·{" "}
+                  {s.status === "ACTIVE" && (
+                    <>
+                      <a className="underline underline-offset-4" href={`/play/${s.code}`}>
+                        Live board &amp; settings
+                      </a>{" "}
+                      ·{" "}
+                    </>
+                  )}
                   <Link className="underline underline-offset-4" href={`/admin/sessions/${s.id}`}>
                     Details
                   </Link>

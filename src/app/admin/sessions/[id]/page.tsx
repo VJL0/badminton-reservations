@@ -17,6 +17,8 @@ type Details = {
     status: "ACTIVE" | "ENDED";
     game_duration_seconds: number;
     auto_requeue_on_finish: boolean;
+    auto_start: boolean;
+    start_delay_seconds: number;
     started_at: string;
     ended_at: string | null;
     courts: number;
@@ -58,6 +60,7 @@ export default async function SessionDetailsPage({ params }: PageProps<"/admin/s
         </div>
         <p className={meta}>
           {session.code} · {session.courts} courts · {Math.round(session.game_duration_seconds / 60)}-minute games
+          {session.auto_start ? ` · auto-start${session.start_delay_seconds ? ` after ${session.start_delay_seconds}s` : ""}` : " · manual start"}
           {session.auto_requeue_on_finish && " · auto re-queue"}
         </p>
         <p className={meta}>
