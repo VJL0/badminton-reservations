@@ -50,7 +50,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as keyof typeof SORTS)}
-          className="h-11 rounded-xl border border-input bg-white px-3 text-sm font-semibold outline-none focus-visible:ring-2 focus-visible:ring-mat"
+          className="h-11 rounded-xl border border-input bg-white px-3 font-semibold text-sm outline-hidden focus-visible:ring-2 focus-visible:ring-mat"
         >
           {Object.entries(SORTS).map(([key, s]) => (
             <option key={key} value={key}>
@@ -64,9 +64,9 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
         {shown.map((p) => (
           <li key={p.player_id}>
             <details className="group">
-              <summary className="flex min-h-14 cursor-pointer list-none flex-col justify-center gap-0.5 py-2 outline-none focus-visible:ring-2 focus-visible:ring-mat [&::-webkit-details-marker]:hidden">
+              <summary className="flex min-h-14 cursor-pointer list-none flex-col justify-center gap-0.5 py-2 outline-hidden focus-visible:ring-2 focus-visible:ring-mat [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center justify-between gap-2">
-                  <span className="min-w-0 break-words font-semibold">
+                  <span className="wrap-break-word min-w-0 font-semibold">
                     {p.name}
                     {p.flags.length > 0 && (
                       <span role="img" aria-label="Needs attention" className="ml-2 text-signal">
@@ -78,7 +78,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
                     ⌄
                   </span>
                 </span>
-                <span className="text-sm text-muted-foreground">
+                <span className="text-muted-foreground text-sm">
                   {p.games} {p.games === 1 ? "game" : "games"} · {formatDuration(p.playing_s)} playing
                   {waitTracked && <> · {formatDuration(p.waiting_s)} waiting</>}
                 </span>
@@ -86,7 +86,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
                   <LocalTime iso={p.first_seen} part="time" /> – <LocalTime iso={p.last_seen} part="time" />
                 </span>
               </summary>
-              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 pb-3 pt-1 text-sm">
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 pt-1 pb-3 text-sm">
                 <Row label="Here for" value={formatDuration(p.present_s)} />
                 <Row label="Games" value={String(p.games)} />
                 <Row label="Playing" value={formatDuration(p.playing_s)} />
@@ -102,7 +102,7 @@ export function PlayersList({ players, waitTracked }: { players: PlayerStat[]; w
         <button
           type="button"
           onClick={() => setAll((v) => !v)}
-          className="min-h-11 self-start rounded-xl px-2 text-sm font-semibold underline underline-offset-4 outline-none focus-visible:ring-2 focus-visible:ring-mat"
+          className="min-h-11 self-start rounded-xl px-2 font-semibold text-sm underline underline-offset-4 outline-hidden focus-visible:ring-2 focus-visible:ring-mat"
         >
           {all ? "Show fewer" : `Show all ${players.length} players`}
         </button>

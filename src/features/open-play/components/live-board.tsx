@@ -141,7 +141,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pb-32 pt-5 lg:gap-7 lg:px-14 lg:pb-16 lg:pt-10">
+    <main className="mx-auto flex w-full max-w-[1360px] flex-col gap-5 px-4 pt-5 pb-32 lg:gap-7 lg:px-14 lg:pt-10 lg:pb-16">
       <header className="flex items-center justify-between gap-4">
         <div className="flex min-w-0 items-center gap-2.5 lg:gap-3.5">
           <span className="hidden text-ink lg:flex">
@@ -151,26 +151,27 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
             <ShuttleIcon size={32} />
           </span>
           <div className="flex min-w-0 flex-col gap-1">
-            <p className="break-words font-display text-2xl font-extrabold uppercase leading-[0.9] tracking-[0.03em] lg:text-[32px]">
+            <p className="wrap-break-word font-display font-extrabold text-2xl uppercase leading-display tracking-display lg:text-[2rem]">
               {session.name}
             </p>
-            <p className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-2 lg:text-xs lg:tracking-[0.14em]">
+            <p className="font-mono text-caption text-ink-2 uppercase tracking-label lg:text-xs lg:tracking-caps">
               Open play · {session.code}
             </p>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3 lg:gap-6">
           {session.status === "ACTIVE" && <QrButton code={session.code} size={36} />}
-          <span className="flex items-center gap-2 font-mono text-[11px] font-medium tracking-[0.14em] text-mat lg:text-xs">
+          <span className="flex items-center gap-2 font-medium font-mono text-caption text-mat tracking-caps lg:text-xs">
             <i className={`live-dot size-2 rounded-full ${connected ? "bg-mat" : "bg-cork"}`} />
-            <span className="max-[379px]:sr-only">{connected ? "LIVE" : "RECONNECTING"}</span>
+            {/* On a phone the dot says it (green / amber); the word is for screen readers and wider screens. */}
+            <span className="max-sm:sr-only">{connected ? "LIVE" : "RECONNECTING"}</span>
           </span>
           {me.role ? (
             <StaffMenu name={me.display_name} role={me.role} />
           ) : (
             <div className="hidden flex-col items-end gap-0.5 lg:flex">
-              <span className="text-base font-bold">{me.display_name}</span>
-              <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-ink-2">player</span>
+              <span className="font-bold text-base">{me.display_name}</span>
+              <span className="font-mono text-caption text-ink-2 uppercase tracking-caps">player</span>
             </div>
           )}
         </div>
@@ -210,10 +211,10 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         </Alert>
       )}
 
-      <section className="flex flex-col gap-7 rounded-[28px] bg-hall px-4 pb-8 pt-6 lg:gap-[30px] lg:rounded-[36px] lg:px-10 lg:pb-10 lg:pt-[34px]">
+      <section className="flex flex-col gap-7 rounded-panel bg-hall px-4 pt-6 pb-8 lg:gap-[30px] lg:rounded-[36px] lg:px-10 lg:pt-[34px] lg:pb-10">
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
-          <h2 className="font-display text-[28px] font-extrabold uppercase tracking-[0.05em] text-line lg:text-4xl">The courts</h2>
-          <p className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-sage lg:text-xs">
+          <h2 className="font-display font-extrabold text-[1.75rem] text-line uppercase tracking-[0.05em] lg:text-4xl">The courts</h2>
+          <p className="font-mono text-caption text-sage uppercase tracking-caps lg:text-xs">
             {Math.round(session.game_duration_seconds / 60)}-minute games · {session.auto_start ? "auto-start" : "manual start"}
           </p>
         </div>

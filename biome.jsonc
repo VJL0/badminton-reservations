@@ -21,7 +21,9 @@
       },
       "nursery": {
         "useReactCompiler": "error",
-        "noFloatingPromises": "error"
+        "noFloatingPromises": "error",
+        // Tailwind classes in one canonical order (like prettier-plugin-tailwindcss), also inside cn(...) and cva(...).
+        "useSortedClasses": { "level": "error", "options": { "functions": ["cn", "cva"] } }
       }
     }
   },

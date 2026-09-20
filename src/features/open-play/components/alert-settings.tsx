@@ -29,13 +29,13 @@ export function AlertSettings({
   const iphone = useSyncExternalStore(noop, isIPhone, () => false);
 
   return (
-    <section aria-label="Alerts" className="flex flex-col gap-3 rounded-[20px] border-2 border-ink/15 bg-white px-4 py-3 lg:px-6">
+    <section aria-label="Alerts" className="flex flex-col gap-3 rounded-card border-2 border-ink/15 bg-white px-4 py-3 lg:px-6">
       <div className="flex items-center justify-between gap-3">
         <label className="flex min-h-11 flex-1 items-center gap-3">
           <Switch checked={sound} onCheckedChange={onSound} />
-          <span className="text-sm font-semibold">
+          <span className="font-semibold text-sm">
             Sound{canVibrate ? " and vibration" : ""} when it&apos;s your turn
-            <span className="block text-xs font-normal text-ink-2">
+            <span className="block font-normal text-ink-2 text-xs">
               While this page is open.
               {iphone ? " Plays even if your iPhone is on silent." : ""}
             </span>
@@ -49,10 +49,10 @@ export function AlertSettings({
       </div>
 
       {push.state !== "hidden" && (
-        <div className="flex flex-col gap-2 border-t border-ink/10 pt-3">
-          <p className="text-sm font-semibold">
+        <div className="flex flex-col gap-2 border-ink/10 border-t pt-3">
+          <p className="font-semibold text-sm">
             Phone notifications
-            <span className="block text-xs font-normal text-ink-2">
+            <span className="block font-normal text-ink-2 text-xs">
               Reach you when the app is closed or your screen is locked.
               {iphone ? " The buzz on an iPhone comes from the notification." : ""}
             </span>
@@ -75,17 +75,17 @@ export function AlertSettings({
             )}
           </div>
           {push.state === "needs-install" && (
-            <p className="text-xs text-ink-2">
+            <p className="text-ink-2 text-xs">
               On iPhone, notifications only work for an app on your Home Screen. Tap Share, then &ldquo;Add to Home Screen&rdquo;, and open
               it from there.
             </p>
           )}
           {push.state === "denied" && (
-            <p className="text-xs text-ink-2">Notifications are blocked. Allow them for this site in your browser or phone settings.</p>
+            <p className="text-ink-2 text-xs">Notifications are blocked. Allow them for this site in your browser or phone settings.</p>
           )}
-          {push.state === "unsupported" && <p className="text-xs text-ink-2">This browser can&apos;t send notifications.</p>}
+          {push.state === "unsupported" && <p className="text-ink-2 text-xs">This browser can&apos;t send notifications.</p>}
           {push.error && (
-            <p role="alert" className="text-xs text-destructive">
+            <p role="alert" className="text-destructive text-xs">
               {push.error}
             </p>
           )}

@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button";
 
 function Fallback({ label }: { label: string }, { retry }: ErrorInfo) {
   return (
-    <div role="alert" className="flex flex-col gap-2 rounded-[20px] border-2 border-ink/15 bg-white px-4 py-3">
-      <p className="text-sm font-semibold">{label} couldn&apos;t load.</p>
+    <div role="alert" className="flex flex-col gap-2 rounded-card border-2 border-ink/15 bg-white px-4 py-3">
+      <p className="font-semibold text-sm">{label} couldn&apos;t load.</p>
       <Button variant="outline" className="h-11 w-fit px-5" onClick={() => retry()}>
         Try again
       </Button>

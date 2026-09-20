@@ -78,7 +78,7 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
           <Button type="submit" className={ctaClass} disabled={pending || !name.trim() || (captchaEnabled && !token)}>
             {pending ? "One sec…" : "Continue"}
           </Button>
-          <p className="text-center text-sm text-muted-foreground">
+          <p className="text-center text-muted-foreground text-sm">
             Staff?{" "}
             <Link href="/admin/login" className="underline underline-offset-4 hover:text-foreground">
               Sign in

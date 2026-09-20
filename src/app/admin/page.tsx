@@ -72,8 +72,8 @@ export default async function AdminPage() {
         <div className="flex items-center gap-3">
           <ShuttleIcon size={36} />
           <div className="flex flex-col gap-1">
-            <p className="font-display text-2xl font-extrabold uppercase leading-[0.9] tracking-[0.03em]">Officer console</p>
-            <p className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">Open play sessions</p>
+            <p className="font-display font-extrabold text-2xl uppercase leading-display tracking-display">Officer console</p>
+            <p className="font-mono text-caption text-muted-foreground uppercase tracking-caps">Open play sessions</p>
           </div>
         </div>
         <SignOut />
@@ -85,7 +85,7 @@ export default async function AdminPage() {
             <CardTitle className={headingClass}>Set your own password</CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-muted-foreground text-sm">
               You&apos;re signed in with the shared default password. Choose your own before you do anything else.
             </p>
             <ChangePasswordForm />
@@ -110,7 +110,7 @@ export default async function AdminPage() {
               {s.status === "ACTIVE" && <SessionQr url={`${origin}/play/${s.code}`} code={s.code} />}
               <div className="flex min-w-[10rem] flex-1 flex-col gap-1">
                 <div className="flex flex-wrap items-center gap-x-2">
-                  <h2 className="break-words font-display text-2xl font-extrabold uppercase tracking-[0.03em]">{s.name}</h2>
+                  <h2 className="wrap-break-word font-display font-extrabold text-2xl uppercase tracking-display">{s.name}</h2>
                   <Badge
                     className={s.status === "ACTIVE" ? "bg-mat text-white" : ""}
                     variant={s.status === "ACTIVE" ? "default" : "secondary"}
@@ -118,10 +118,10 @@ export default async function AdminPage() {
                     {s.status === "ACTIVE" ? "Live" : "Ended"}
                   </Badge>
                 </div>
-                <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                <p className="font-mono text-muted-foreground text-xs uppercase tracking-meta">
                   /play/{s.code} · {s.courts} courts · {s.players} players
                 </p>
-                <nav aria-label={`${s.name} links`} className="-mx-1 flex flex-wrap font-mono text-xs uppercase tracking-[0.1em]">
+                <nav aria-label={`${s.name} links`} className="-mx-1 flex flex-wrap font-mono text-xs uppercase tracking-meta">
                   {s.status === "ACTIVE" && (
                     <a className="inline-flex min-h-11 items-center px-1 underline underline-offset-4" href={`/play/${s.code}`}>
                       Live board &amp; settings
@@ -145,11 +145,11 @@ export default async function AdminPage() {
             <Card key={m.user_id}>
               <CardContent className="flex flex-wrap items-center gap-4">
                 <div className="flex min-w-[12rem] flex-1 flex-col gap-1">
-                  <p className="break-all font-semibold">
+                  <p className="wrap-anywhere font-semibold">
                     {m.email}
                     {m.user_id === myId && <span className="text-muted-foreground"> (you)</span>}
                   </p>
-                  <p className="font-mono text-xs uppercase tracking-[0.1em] text-muted-foreground">
+                  <p className="font-mono text-muted-foreground text-xs uppercase tracking-meta">
                     {m.role.toLowerCase()} · {m.last_sign_in_at ? "has signed in" : "never signed in"}
                   </p>
                 </div>
@@ -159,7 +159,7 @@ export default async function AdminPage() {
           ))}
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-2xl font-extrabold uppercase tracking-[0.03em]">Add admin</CardTitle>
+              <CardTitle className="font-display font-extrabold text-2xl uppercase tracking-display">Add admin</CardTitle>
             </CardHeader>
             <CardContent>
               <AddAdminForm />
@@ -168,7 +168,7 @@ export default async function AdminPage() {
           {!mustChangePassword && (
             <Card>
               <CardHeader>
-                <CardTitle className="font-display text-2xl font-extrabold uppercase tracking-[0.03em]">Change my password</CardTitle>
+                <CardTitle className="font-display font-extrabold text-2xl uppercase tracking-display">Change my password</CardTitle>
               </CardHeader>
               <CardContent>
                 <ChangePasswordForm />

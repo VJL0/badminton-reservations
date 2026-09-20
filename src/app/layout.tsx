@@ -42,7 +42,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={cn("h-full", "antialiased", display.variable, mono.variable, "font-sans", sans.variable)}>
-      <body className="min-h-full flex flex-col">
+      <body className="flex min-h-full flex-col">
         <OfflineBanner />
         {children}
       </body>

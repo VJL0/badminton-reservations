@@ -127,13 +127,13 @@ export function CourtCard({
     >
       <header className="flex items-end justify-between">
         <div className="flex items-end gap-2 lg:gap-3">
-          <span className="font-display text-[40px] font-extrabold leading-[0.8] text-line lg:text-[104px]">{court.court_number}</span>
-          <span className="flex flex-col gap-0.5 pb-0 font-mono text-[11px] uppercase tracking-[0.14em] text-sage lg:pb-1.5 lg:text-xs">
+          <span className="font-display font-extrabold text-[2.5rem] text-line leading-[0.8] lg:text-[6.5rem]">{court.court_number}</span>
+          <span className="flex flex-col gap-0.5 pb-0 font-mono text-caption text-sage uppercase tracking-caps lg:pb-1.5 lg:text-xs">
             Court
             <span className="text-line">{formatLabel(court)}</span>
           </span>
         </div>
-        <Badge className={cn("h-7 px-3 font-mono text-xs uppercase tracking-[0.12em]", CHIP[chip[0]])}>{chip[1]}</Badge>
+        <Badge className={cn("h-7 px-3 font-mono text-xs uppercase tracking-label", CHIP[chip[0]])}>{chip[1]}</Badge>
       </header>
 
       <div className={cn("mat", mine && "mine")}>
@@ -153,14 +153,14 @@ export function CourtCard({
       </div>
 
       <div className="flex min-h-0 flex-col gap-3 lg:min-h-[64px]">
-        <p className="text-sm leading-snug text-sage">{meta}</p>
+        <p className="text-sage text-sm leading-snug">{meta}</p>
         {players.length > 0 && (
           // On the narrowest phones the tokens can only show a few letters, so spell the names out.
-          <p className="text-sm leading-snug text-line min-[360px]:hidden">{players.map((p) => p.name).join(", ")}</p>
+          <p className="xs:hidden text-line text-sm leading-snug">{players.map((p) => p.name).join(", ")}</p>
         )}
         {pick && (
           <Button
-            className="h-12 rounded-2xl bg-signal text-[15px] font-semibold text-white hover:bg-signal/90"
+            className="h-12 rounded-2xl bg-signal font-semibold text-button text-white hover:bg-signal/90"
             disabled={busy || pick.disabled}
             onClick={() => onQueue(court.id)}
           >
@@ -169,7 +169,7 @@ export function CourtCard({
         )}
         {canStart && round && (
           <Button
-            className="h-12 rounded-2xl bg-cork text-[15px] font-semibold text-cork-ink hover:bg-cork/90"
+            className="h-12 rounded-2xl bg-cork font-semibold text-button text-cork-ink hover:bg-cork/90"
             disabled={busy}
             onClick={() => onStart(round.id)}
           >
@@ -187,7 +187,7 @@ export function CourtCard({
             />
             <Button
               variant="outline"
-              className="h-12 shrink-0 rounded-2xl px-5 text-[15px] font-semibold border-line/60 bg-transparent text-line hover:bg-line/10 hover:text-line"
+              className="h-12 shrink-0 rounded-2xl border-line/60 bg-transparent px-5 font-semibold text-button text-line hover:bg-line/10 hover:text-line"
               disabled={busy}
               onClick={() => onTogglePause(round.id, !paused)}
             >

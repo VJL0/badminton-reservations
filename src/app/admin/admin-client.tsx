@@ -30,7 +30,7 @@ export function EndSessionButton({ sessionId }: { sessionId: string }) {
         }}
       />
       {error && (
-        <p role="alert" className="text-xs text-destructive">
+        <p role="alert" className="text-destructive text-xs">
           {error}
         </p>
       )}
@@ -116,7 +116,7 @@ export function AddAdminForm() {
             placeholder="new.admin@example.com"
             defaultValue={String(state?.values?.email ?? "")}
           />
-          <p className="text-xs text-muted-foreground">
+          <p className="text-muted-foreground text-xs">
             They sign in with this email and the default password, and are asked to change it right away.
           </p>
         </Field>
@@ -143,7 +143,7 @@ export function ResetPasswordButton({ userId }: { userId: string }) {
         }
       />
       {message && (
-        <p role={message.ok ? "status" : "alert"} className={message.ok ? "text-xs text-muted-foreground" : "text-xs text-destructive"}>
+        <p role={message.ok ? "status" : "alert"} className={message.ok ? "text-muted-foreground text-xs" : "text-destructive text-xs"}>
           {message.text}
         </p>
       )}
@@ -160,7 +160,7 @@ export function ChangePasswordForm() {
         <Field>
           <FieldLabel htmlFor="new-password">New password</FieldLabel>
           <Input id="new-password" name="password" type="password" required autoComplete="new-password" minLength={10} />
-          <p className="text-xs text-muted-foreground">At least 10 characters with upper case, lower case and a digit.</p>
+          <p className="text-muted-foreground text-xs">At least 10 characters with upper case, lower case and a digit.</p>
         </Field>
         <FormFooter state={state} pending={pending} label="Change password" />
       </FieldGroup>
