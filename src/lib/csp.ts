@@ -15,7 +15,9 @@ export function buildCsp(nonce: string) {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${turnstile}${dev ? " 'unsafe-eval'" : ""}`,
-    `style-src 'self' 'nonce-${nonce}'`,
+    // Next's dev overlay and dev font styles inject <style> tags that cannot carry our nonce. A nonce would make
+    // browsers ignore 'unsafe-inline', so in development only, allow inline styles instead. Production stays nonce-only.
+    dev ? "style-src 'self' 'unsafe-inline'" : `style-src 'self' 'nonce-${nonce}'`,
     "style-src-attr 'unsafe-inline'", // React style={{}} attributes; cannot carry a nonce
     "img-src 'self' data: blob:",
     "font-src 'self'",

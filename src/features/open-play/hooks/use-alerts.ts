@@ -23,6 +23,8 @@ function write(on: boolean) {
   }
   listeners.forEach((l) => l());
 }
+const noopSubscribe = () => () => {};
+
 function subscribe(l: () => void) {
   listeners.add(l);
   window.addEventListener("storage", l);
@@ -42,7 +44,8 @@ type Kind = "next" | "court";
 export function useAlerts() {
   const enabled = useSyncExternalStore(subscribe, read, () => false);
   const ctx = useRef<AudioContext | null>(null);
-  const canVibrate = typeof navigator !== "undefined" && "vibrate" in navigator;
+  // Server render and first client render agree (false); the real answer arrives right after hydration.
+  const canVibrate = useSyncExternalStore(noopSubscribe, () => "vibrate" in navigator, () => false);
 
   const audio = useCallback(() => {
     if (!ctx.current) {
