@@ -9,7 +9,8 @@ import type { Database } from "./database.types";
  */
 export async function updateSession(request: NextRequest, requestHeaders: Headers) {
   let response = NextResponse.next({ request: { headers: requestHeaders } });
-  const supabase = createServerClient<Database>(env.SUPABASE_URL, env.SUPABASE_KEY, {
+  const supabase = createServerClient<Database, "api">(env.SUPABASE_URL, env.SUPABASE_KEY, {
+    db: { schema: "api" },
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll(list) {

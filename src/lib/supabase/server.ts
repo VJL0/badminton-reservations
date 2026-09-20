@@ -6,7 +6,8 @@ import type { Database } from "./database.types";
 
 export async function createClient() {
   const cookieStore = await cookies();
-  return createServerClient<Database>(env.SUPABASE_URL, env.SUPABASE_KEY, {
+  return createServerClient<Database, "api">(env.SUPABASE_URL, env.SUPABASE_KEY, {
+    db: { schema: "api" },
     cookies: {
       getAll: () => cookieStore.getAll(),
       setAll(list) {

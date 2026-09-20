@@ -1,9 +1,11 @@
 "use server";
 
 import { idSchema } from "../schemas";
-import { type ActionResult, callRpc, invalid } from "./rpc";
+import { finishRound as command } from "../server/commands";
+import { invalid } from "../server/errors";
+import type { ActionResult } from "./result";
 
 export async function finishRound(roundId: string): Promise<ActionResult> {
   const id = idSchema.safeParse(roundId);
-  return id.success ? callRpc("finish_round", { p_round_id: id.data }) : invalid;
+  return id.success ? command(id.data) : invalid;
 }

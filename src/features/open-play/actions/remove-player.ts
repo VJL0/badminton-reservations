@@ -1,10 +1,13 @@
 "use server";
 
 import { idSchema } from "../schemas";
-import { type ActionResult, callRpc, invalid } from "./rpc";
+import { removePlayer as command } from "../server/commands";
+import { invalid } from "../server/errors";
+import type { ActionResult } from "./result";
 
-export async function removePlayer(sessionId: string, playerId: string): Promise<ActionResult> {
+/** `participantId` is the id the board shows for the person, not their login. */
+export async function removePlayer(sessionId: string, participantId: string): Promise<ActionResult> {
   const s = idSchema.safeParse(sessionId);
-  const p = idSchema.safeParse(playerId);
-  return s.success && p.success ? callRpc("remove_player", { p_session_id: s.data, p_player_id: p.data }) : invalid;
+  const p = idSchema.safeParse(participantId);
+  return s.success && p.success ? command(s.data, p.data) : invalid;
 }

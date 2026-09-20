@@ -4,8 +4,10 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createSessionSchema, firstIssue, idSchema } from "../schemas";
+import * as commands from "../server/commands";
+import { invalid } from "../server/errors";
 import type { FormState } from "./form-state";
-import { type ActionResult, callRpc, invalid } from "./rpc";
+import type { ActionResult } from "./result";
 
 export async function signOut() {
   const supabase = await createClient();
@@ -13,31 +15,18 @@ export async function signOut() {
   redirect("/admin/login");
 }
 
-async function createSession(input: { name: string; courts: number; minutes: number; autoRequeue: boolean }): Promise<ActionResult> {
-  const p = createSessionSchema.safeParse(input);
-  if (!p.success) return { ok: false, error: firstIssue(p.error) };
-  const res = await callRpc("create_session", {
-    p_name: p.data.name,
-    p_court_count: p.data.courts,
-    p_game_duration_seconds: p.data.minutes * 60,
-    p_auto_requeue: p.data.autoRequeue,
-  });
-  refresh();
-  return res;
-}
-
 export async function endSession(sessionId: string): Promise<ActionResult> {
   const id = idSchema.safeParse(sessionId);
   if (!id.success) return invalid;
-  const res = await callRpc("end_session", { p_session_id: id.data });
-  refresh();
+  const res = await commands.endSession(id.data);
+  refresh(); // the page updates in the same round trip
   return res;
 }
 
 export async function deleteSession(sessionId: string): Promise<ActionResult> {
   const id = idSchema.safeParse(sessionId);
   if (!id.success) return invalid;
-  const res = await callRpc("delete_session", { p_session_id: id.data });
+  const res = await commands.deleteSession(id.data);
   refresh();
   return res;
 }
@@ -50,11 +39,9 @@ export async function createSessionForm(_prev: FormState, formData: FormData): P
     minutes: String(formData.get("minutes") ?? ""),
     autoRequeue: formData.get("autoRequeue") === "on",
   };
-  const res = await createSession({
-    name: values.name,
-    courts: Number(values.courts),
-    minutes: Number(values.minutes),
-    autoRequeue: values.autoRequeue,
-  });
+  const p = createSessionSchema.safeParse(values);
+  if (!p.success) return { ok: false, error: firstIssue(p.error), values };
+  const res = await commands.createSession(p.data);
+  refresh();
   return res.ok ? { ok: true, message: "Session created." } : { ok: false, error: res.error, values };
 }

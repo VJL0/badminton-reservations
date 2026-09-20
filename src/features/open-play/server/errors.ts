@@ -1,9 +1,13 @@
 import "server-only";
-import type { Database } from "@/lib/supabase/database.types";
-import { createClient } from "@/lib/supabase/server";
+import type { PostgrestError } from "@supabase/supabase-js";
+import type { ActionResult } from "../actions/result";
 
-export type ActionResult = { ok: true } | { ok: false; error: string };
+export type { ActionResult };
 
+export const invalid: ActionResult = { ok: false, error: "Invalid request." };
+export const denied: ActionResult = { ok: false, error: "Only admins can do that." };
+
+/** What a person is told for each failure the database raises on purpose. Anything else is ours to look at. */
 const MESSAGES: Record<string, string> = {
   not_authenticated: "Please enter your name first.",
   profile_required: "Please enter your name first.",
@@ -28,23 +32,24 @@ const MESSAGES: Record<string, string> = {
   too_fast: "Slow down a second, then try again.",
 };
 
-export const invalid: ActionResult = { ok: false, error: "Invalid request." };
-
-// Server Actions are public endpoints: authorization lives in the database
-// functions, which read the caller's JWT. This only forwards the call.
-type Fns = Database["public"]["Functions"];
-/** Only functions clients may call: the `_internal` ones are locked away in the database. */
-type RpcName = Exclude<keyof Fns, `_${string}`>;
-
-// The generated types make a wrong function name or argument name a compile error, not a runtime one.
-export async function callRpc<F extends RpcName>(fn: F, args: Fns[F]["Args"]): Promise<ActionResult> {
-  const supabase = await createClient();
-  const { error } = await supabase.rpc(fn, args);
-  if (error) {
-    const friendly = MESSAGES[error.message];
-    // Known failures are user errors; anything else is ours to see in the logs.
-    if (!friendly) console.error(`[rpc] ${fn} failed: ${error.code ?? ""} ${error.message}`);
-    return { ok: false, error: friendly ?? "Something went wrong. Try again." };
+/** A failed call to an `api` function. `code` is what the function raised (`not_staff`, `session_ended`...). */
+export class DatabaseError extends Error {
+  readonly fn: string;
+  readonly code: string;
+  constructor(fn: string, code: string, detail: string) {
+    super(`${fn} failed: ${detail}`);
+    this.name = "DatabaseError";
+    this.fn = fn;
+    this.code = code;
   }
-  return { ok: true };
+  /** Something a person can act on, when the database refused on purpose. */
+  get friendly(): string | undefined {
+    return MESSAGES[this.code];
+  }
 }
+
+export const translateDatabaseError = (fn: string, error: PostgrestError) =>
+  new DatabaseError(fn, error.message, `${error.code ?? ""} ${error.message}`.trim());
+
+export const isDatabaseError = (e: unknown, code?: string): e is DatabaseError =>
+  e instanceof DatabaseError && (code === undefined || e.code === code);
