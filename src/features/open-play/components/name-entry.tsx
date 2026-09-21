@@ -13,8 +13,15 @@ import { saveDisplayName } from "../actions/save-display-name";
 import { settle } from "../client/settle";
 import { ctaClass } from "../styles";
 
-/** `hasSession`: this browser is already signed in (anonymously), so the CAPTCHA that guards creating a login is not needed. */
-export function NameEntry({ sessionCode, nonce, hasSession }: { sessionCode: string; nonce?: string; hasSession: boolean }) {
+/**
+ * The first thing a new player sees, on the permanent QR page (or on a session link opened without a login).
+ * Nothing is created until they press Continue: only then is an anonymous login made (behind the CAPTCHA) and the
+ * name saved. The page then re-renders on the server, which asks the database which session is live and goes there,
+ * or waits for one.
+ *
+ * `hasSession`: this browser is already signed in, so the CAPTCHA that guards creating a login is not needed.
+ */
+export function NameEntry({ sessionCode, nonce, hasSession }: { sessionCode?: string; nonce?: string; hasSession: boolean }) {
   const router = useRouter();
   const [name, setName] = useState("");
   const [token, setToken] = useState<string>();
@@ -55,7 +62,7 @@ export function NameEntry({ sessionCode, nonce, hasSession }: { sessionCode: str
 
   return (
     <CenteredPage
-      eyebrow={`Open play · ${sessionCode.toUpperCase()}`}
+      eyebrow={sessionCode ? `Open play · ${sessionCode.toUpperCase()}` : "Open play"}
       title="What's your name?"
       description="Others see it on the court board. No account needed."
     >

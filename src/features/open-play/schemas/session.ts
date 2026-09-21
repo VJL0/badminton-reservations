@@ -18,3 +18,6 @@ export type SessionRow = z.infer<typeof sessionListSchema>[number];
 
 /** api.get_active_session_code() */
 export const activeSessionCodeSchema = z.string().nullable();
+
+/** api.get_display_name() */
+export const displayNameSchema = z.string().nullable();

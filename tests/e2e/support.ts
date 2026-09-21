@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { type Browser, type BrowserContext, expect, type Page } from "@playwright/test";
+import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import pg from "pg";
 import type { Database } from "../../src/lib/supabase/database.types";
 import { e2eEnv } from "./env";
 
@@ -8,36 +10,107 @@ const env = e2eEnv();
 export type Db = SupabaseClient<Database, "api">;
 
 const options = { db: { schema: "api" as const }, auth: { autoRefreshToken: false, persistSession: false } };
-export const PASSWORD = "E2e-Passw0rd-long1";
+export const APP_ORIGIN = "http://127.0.0.1:3100";
 
-/** The secret key: creates logins and grants staff. Never a way around the database's own rules for anything else. */
+/** The secret key: creates logins. Never a way around the database's own rules for anything else. */
 export const privileged = (): Db => createClient<Database, "api">(env.url, env.secretKey, options);
 
-async function signedIn(email: string, password: string): Promise<Db> {
-  const db = createClient<Database, "api">(env.url, env.publishableKey, options);
-  const { error } = await db.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  return db;
+/** Straight SQL as the database owner: what the README tells the first admin to run, and test cleanup. */
+export async function sql(text: string, params: unknown[] = []) {
+  const client = new pg.Client({ connectionString: env.dbUrl });
+  await client.connect();
+  try {
+    return await client.query(text, params);
+  } finally {
+    await client.end();
+  }
 }
 
-export type TestAdmin = { id: string; email: string; db: Db };
+type BrowserCookie = {
+  name: string;
+  value: string;
+  url: string;
+  httpOnly?: boolean;
+  sameSite?: "Lax" | "Strict" | "None";
+  expires?: number;
+};
 
-/** A fresh admin account, signed in. Removed with its staff row by `remove`. */
-export async function createAdmin(): Promise<TestAdmin> {
-  const email = `admin-${randomUUID()}@e2e.test`;
-  const service = privileged();
-  const { data, error } = await service.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true });
+export type TestLogin = { id: string; email: string; db: Db; cookies: BrowserCookie[] };
+export type TestAdmin = TestLogin;
+
+/**
+ * A person as Google would leave them in Auth: a user with a Google identity whose email Google verified, signed
+ * in. There is no password anywhere: the session comes from a one-time sign-in link the secret key can mint, and
+ * the same session is written as the cookies the app's server client reads, so a browser can be signed in as them.
+ * (Google itself cannot be driven from a test.)
+ */
+export async function googleLogin(email: string): Promise<TestLogin> {
+  const { data, error } = await privileged().auth.admin.createUser({ email, email_confirm: true });
   if (error || !data.user) throw error ?? new Error("createUser returned no user");
-  const granted = await service.rpc("grant_staff", { p_user_id: data.user.id, p_role: "ADMIN" });
-  if (granted.error) throw granted.error;
-  const db = await signedIn(email, PASSWORD);
-  // Like a real officer, they have given a name before they see a board.
-  const named = await db.rpc("set_display_name", { p_name: "Officer" });
-  if (named.error) throw new Error(named.error.message);
-  return { id: data.user.id, email, db };
+  const id = data.user.id;
+  await sql(
+    `insert into auth.identities (provider_id, user_id, provider, identity_data, last_sign_in_at, created_at, updated_at)
+     values ($1, $2, 'google', jsonb_build_object('sub', $1::text, 'email', $3::text, 'email_verified', true), now(), now(), now())`,
+    [`g-${id}`, id, email],
+  );
+
+  const link = await privileged().auth.admin.generateLink({ type: "magiclink", email });
+  if (link.error) throw link.error;
+  const jar = new Map<string, BrowserCookie>();
+  const db = createServerClient<Database, "api">(env.url, env.publishableKey, {
+    db: { schema: "api" },
+    cookies: {
+      getAll: () => [...jar.values()].map(({ name, value }) => ({ name, value })),
+      setAll(list) {
+        for (const { name, value, options: o } of list) {
+          jar.set(name, {
+            name,
+            value,
+            url: APP_ORIGIN,
+            httpOnly: o?.httpOnly,
+            sameSite: "Lax",
+            expires: o?.maxAge ? Math.floor(Date.now() / 1000) + o.maxAge : undefined,
+          });
+        }
+      },
+    },
+  });
+  const verified = await db.auth.verifyOtp({ type: "magiclink", token_hash: link.data.properties.hashed_token });
+  if (verified.error) throw verified.error;
+  await db.auth.getSession(); // let the cookie writes settle
+  return { id, email, db, cookies: [...jar.values()] };
 }
 
-export const removeUser = (id: string) => privileged().auth.admin.deleteUser(id);
+/** Sign a browser in as this person. */
+export const signInBrowser = (context: BrowserContext, login: TestLogin) => context.addCookies(login.cookies);
+
+/**
+ * A fresh admin, made the way the README bootstraps the first one: their email is authorized in SQL, and their
+ * first Google sign-in (the claim below) turns that into a staff row.
+ */
+export async function createAdmin(role: "ADMIN" | "OPERATOR" = "ADMIN"): Promise<TestAdmin> {
+  const email = `admin-${randomUUID()}@e2e.test`;
+  await sql("insert into app.staff_authorizations (email, role) values ($1, $2)", [email, role]);
+  try {
+    const login = await googleLogin(email);
+    const claimed = await login.db.rpc("claim_staff_access");
+    if (claimed.error || claimed.data !== role)
+      throw new Error(`first sign-in did not grant ${role}: ${claimed.error?.message ?? claimed.data}`);
+    // Like a real officer, they have given a name before they see a board.
+    const named = await login.db.rpc("set_display_name", { p_name: "Officer" });
+    if (named.error) throw new Error(named.error.message);
+    return login;
+  } catch (e) {
+    await sql("delete from app.staff_authorizations where email = $1", [email]); // do not leave a half-made admin behind
+    throw e;
+  }
+}
+
+/** Delete a login and, if it was staff, the authorization behind it. */
+export async function removeUser(id: string) {
+  await sql("delete from app.staff_authorizations where user_id = $1", [id]);
+  await privileged().auth.admin.deleteUser(id);
+}
 
 /** A player as the app makes one: an anonymous login with the publishable key, and a name. (No browser: for races.) */
 export async function anonymousPlayer(name: string): Promise<{ id: string; db: Db }> {

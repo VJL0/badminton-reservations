@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
+import type { StaffRole } from "../schemas";
 import { requireAdmin, requireStaff } from "./auth";
 import { rpc } from "./db";
 import { type ActionResult, DatabaseError, denied } from "./errors";
@@ -79,3 +80,10 @@ export const addCourt = (sessionId: string, sideA: number, sideB: number) =>
 export const updateCourt = (courtId: string, sideA: number, sideB: number) =>
   asAdmin((db) => rpc(db, "update_court", { p_court_id: courtId, p_side_a: sideA, p_side_b: sideB }));
 export const deleteCourt = (courtId: string) => asAdmin((db) => rpc(db, "delete_court", { p_court_id: courtId }));
+
+// ---- who may be staff (admins only; the role is checked again inside the database)
+
+export const authorizeStaff = (email: string, role: StaffRole) =>
+  asAdmin((db) => rpc(db, "authorize_staff", { p_email: email, p_role: role }));
+
+export const revokeStaff = (email: string) => asAdmin((db) => rpc(db, "revoke_staff", { p_email: email }));

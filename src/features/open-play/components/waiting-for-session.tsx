@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Captcha, type CaptchaHandle, captchaEnabled } from "@/components/captcha";
 import { getBrowserSupabase } from "@/lib/supabase/client";
 import { listen } from "../client/realtime";
 import { activeSessionCodeSchema } from "../schemas";
@@ -13,20 +12,16 @@ const FALLBACK_MS = 30_000;
  * Sits on the "nothing is running" page and opens the queue the moment a session starts, so a player who arrived
  * early doesn't have to scan or refresh.
  *
- * It listens on a private lobby channel, which needs a login, so the browser signs in anonymously first (behind
- * the same Turnstile check as the name form). A message on the channel only means "the live session changed":
- * the answer always comes from asking the database. The same question is asked when the channel (re)connects and
- * when the phone wakes or comes back online. There is no polling interval; a slow check runs only while the
- * channel is not connected, as a last resort after Realtime has been failing for a while.
+ * By now this browser has a login (the name form made an anonymous one), which the private lobby channel needs.
+ * A message on the channel only means "the live session changed": the answer always comes from asking the
+ * database. The same question is asked when the channel (re)connects and when the phone wakes or comes back online.
+ * There is no polling interval; a slow check runs only while the channel is not connected, as a last resort after
+ * Realtime has been failing for a while.
  */
-export function WaitingForSession({ nonce }: { nonce?: string }) {
+export function WaitingForSession() {
   const router = useRouter();
-  const [token, setToken] = useState<string>();
-  const [needsCheck, setNeedsCheck] = useState(false);
-  const [ready, setReady] = useState(false);
   const [subscribed, setSubscribed] = useState(false);
   const [failed, setFailed] = useState(false);
-  const captcha = useRef<CaptchaHandle>(null);
   const inFlight = useRef(false);
   const arrived = useRef(false);
 
@@ -48,33 +43,8 @@ export function WaitingForSession({ nonce }: { nonce?: string }) {
     }
   }, [router]);
 
-  // 1. This browser needs a login before it may join the private channel.
+  // 1. Listen for the lobby announcing a change, and ask right away in case we missed one.
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const supabase = getBrowserSupabase();
-      const { data } = await supabase.auth.getSession();
-      if (cancelled) return;
-      if (data.session) return setReady(true);
-      if (captchaEnabled && !token) return setNeedsCheck(true); // show the widget; this runs again once it hands back a token
-      const { error } = await supabase.auth.signInAnonymously({ options: { captchaToken: token } });
-      if (cancelled) return;
-      if (error) {
-        captcha.current?.reset(); // tokens are single-use
-        setToken(undefined);
-        return setFailed(true);
-      }
-      setNeedsCheck(false);
-      setReady(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-
-  // 2. Listen for the lobby announcing a change, and ask right away in case we missed one.
-  useEffect(() => {
-    if (!ready) return;
     void check();
     return listen(
       "open-play:lobby",
@@ -82,12 +52,13 @@ export function WaitingForSession({ nonce }: { nonce?: string }) {
       () => void check(),
       (status) => {
         setSubscribed(status === "SUBSCRIBED");
+        setFailed(status === "CHANNEL_ERROR" || status === "TIMED_OUT");
         if (status === "SUBSCRIBED") void check();
       },
     );
-  }, [ready, check]);
+  }, [check]);
 
-  // 3. Coming back to the page is a reason to ask again.
+  // 2. Coming back to the page is a reason to ask again.
   useEffect(() => {
     const again = () => void check();
     document.addEventListener("visibilitychange", again);
@@ -100,7 +71,7 @@ export function WaitingForSession({ nonce }: { nonce?: string }) {
     };
   }, [check]);
 
-  // 4. Last resort: only while the channel is not connected (Realtime down, or the login failed).
+  // 3. Last resort: only while the channel is not connected.
   useEffect(() => {
     if (subscribed) return;
     const timer = setInterval(() => void check(), FALLBACK_MS);
@@ -117,10 +88,9 @@ export function WaitingForSession({ nonce }: { nonce?: string }) {
         <i className="live-dot size-2 rounded-full bg-mat" />
         Waiting for open play to start
       </p>
-      {needsCheck && <Captcha ref={captcha} onToken={setToken} nonce={nonce} />}
       {failed && (
         <p role="alert" className="text-sm text-muted-foreground">
-          Couldn&apos;t connect for live updates. We&apos;ll keep checking every so often.
+          Live updates are reconnecting. We&apos;ll keep checking every so often.
         </p>
       )}
     </div>

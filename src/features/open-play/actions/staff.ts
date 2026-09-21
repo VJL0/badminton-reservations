@@ -1,27 +1,27 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { idSchema } from "../schemas";
+import { authorizeStaffSchema, emailSchema, firstIssue } from "../schemas";
+import { authorizeStaff, revokeStaff as revoke } from "../server/commands";
 import { invalid } from "../server/errors";
-import { changeOwnPassword, inviteAdmin, resendInvite as resend } from "../server/staff";
 import type { FormState } from "./form-state";
 import type { ActionResult } from "./result";
 
-export async function inviteAdminForm(_prev: FormState, formData: FormData): Promise<FormState> {
-  const email = String(formData.get("email") ?? "");
-  const res = await inviteAdmin(email);
-  if (res.ok) refresh();
-  return res.ok
-    ? { ok: true, message: "Invitation sent. They choose their own password from the email." }
-    : { ok: false, error: res.error, values: { email } };
+/** The "Add staff" form: authorize an email for a role. Nothing is sent to them; they just sign in with Google. */
+export async function authorizeStaffForm(_prev: FormState, formData: FormData): Promise<FormState> {
+  const values = { email: String(formData.get("email") ?? ""), role: String(formData.get("role") ?? "") };
+  const parsed = authorizeStaffSchema.safeParse(values);
+  if (!parsed.success) return { ok: false, error: firstIssue(parsed.error), values };
+  const res = await authorizeStaff(parsed.data.email, parsed.data.role);
+  if (!res.ok) return { ok: false, error: res.error, values };
+  refresh();
+  return { ok: true, message: `${parsed.data.email} can now sign in with Google.` };
 }
 
-export async function resendInvite(userId: string): Promise<ActionResult> {
-  const id = idSchema.safeParse(userId);
-  return id.success ? resend(id.data) : invalid;
-}
-
-export async function changePasswordForm(_prev: FormState, formData: FormData): Promise<FormState> {
-  const res = await changeOwnPassword(String(formData.get("password") ?? ""));
-  return res.ok ? { ok: true, message: "Password changed." } : { ok: false, error: res.error }; // never echo a password back
+export async function revokeStaff(email: string): Promise<ActionResult> {
+  const parsed = emailSchema.safeParse(email);
+  if (!parsed.success) return invalid;
+  const res = await revoke(parsed.data);
+  refresh();
+  return res;
 }

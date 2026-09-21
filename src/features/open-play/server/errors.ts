@@ -29,6 +29,10 @@ const MESSAGES: Record<string, string> = {
   invalid_name: "Enter a name between 1 and 40 characters.",
   queue_full: "The queue is full right now. Try again in a few minutes.",
   invalid_subscription: "This browser can't receive notifications.",
+  invalid_email: "Enter a valid email address.",
+  invalid_role: "Choose admin or officer.",
+  cannot_change_self: "You can't change your own access. Ask another admin.",
+  staff_not_found: "That person is no longer on the list.",
   too_fast: "Slow down a second, then try again.",
 };
 

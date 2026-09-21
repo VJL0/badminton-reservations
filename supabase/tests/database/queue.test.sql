@@ -63,7 +63,7 @@ select is((select c.court_number from app.rounds r join app.courts c on c.id = r
 select is((select ends_at from app.rounds where status = 'FILLING' and session_id = (select id from t_s)), null,
           'no timer while filling');
 select tests.join(tests.uid(4), (select id from t_s));
-select ok((select ends_at - started_at = interval '20 minutes' from app.rounds
+select ok((select abs(extract(epoch from ends_at - started_at) - 1200) < 0.01 from app.rounds
             where status = 'ACTIVE' and session_id = (select id from t_s)),
           '4th player starts a 20 minute timer');
 
@@ -153,7 +153,7 @@ select tests.call(tests.uid(5), format('select api.leave_queue(%L)', (select id 
 select is((select state::text from tests.sp where player_id = tests.uid(5) and session_id = (select id from t_k)), 'IDLE',
           'a waiting player can leave');
 select throws_ok(format('select tests.join(tests.uid(5), %L)', (select id from t_k)), 'too_fast', 'instant leave/join churn is throttled');
-select is((select count(*)::int from pg_policies where schemaname = 'app' and policyname = 'no direct client access'), 10,
+select is((select count(*)::int from pg_policies where schemaname = 'app' and policyname = 'no direct client access'), 11,
           'every table has an explicit deny policy');
 
 -- ---------- choosing a court (queue for a specific court)
@@ -172,7 +172,7 @@ select is((select count(*)::int from tests.rp rp join app.rounds r on r.id = rp.
             where rp.player_id = tests.uid(1) and rp.left_at is null and r.session_id = (select id from t_pk)), 1,
           'picking again while placed is a no-op');
 select tests.pick(tests.uid(n), (select id from t_pk), (select id from t_pkc where court_number = 3)) from generate_series(2, 4) n;
-select ok((select ends_at - started_at = interval '10 minutes' from app.rounds r join app.courts c on c.id = r.court_id
+select ok((select abs(extract(epoch from ends_at - started_at) - 600) < 0.01 from app.rounds r join app.courts c on c.id = r.court_id
             where c.court_number = 3 and c.session_id = (select id from t_pk) and r.status = 'ACTIVE'),
           'the 4th player on a picked court starts its timer');
 select tests.call(tests.uid(5), $$select api.set_display_name('P5')$$);

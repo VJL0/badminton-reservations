@@ -11,6 +11,7 @@ Object.assign(process.env, {
   E2E_SUPABASE_URL: env.url,
   E2E_SUPABASE_PUBLISHABLE_KEY: env.publishableKey,
   E2E_SUPABASE_SECRET_KEY: env.secretKey,
+  E2E_SUPABASE_DB_URL: env.dbUrl,
 });
 
 export default defineConfig({

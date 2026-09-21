@@ -13,15 +13,7 @@ import { listSessions, listStaff } from "@/features/open-play/server/queries";
 import { headingClass, metaClass } from "@/features/open-play/styles";
 import { serverEnv } from "@/lib/env.server";
 import { createClient } from "@/lib/supabase/server";
-import {
-  ChangePasswordForm,
-  CreateSessionForm,
-  DeleteSessionButton,
-  EndSessionButton,
-  InviteAdminForm,
-  JoinQr,
-  ResendInviteButton,
-} from "./admin-client";
+import { AuthorizeStaffForm, CreateSessionForm, DeleteSessionButton, EndSessionButton, JoinQr, RevokeStaffButton } from "./admin-client";
 
 export const metadata: Metadata = { title: "Officer console" };
 
@@ -74,7 +66,11 @@ export default async function AdminPage() {
     // A player (anonymous session) who wandered here just needs to sign in as an officer.
     if (me.anonymous) redirect("/admin/login");
     return (
-      <CenteredPage eyebrow="Officers" title="Not authorized" description="This account isn't an officer yet. Ask an admin to add you.">
+      <CenteredPage
+        eyebrow="Officers"
+        title="Not authorized"
+        description={`${me.email ?? "This Google account"} isn't on the staff list. Ask an admin to authorize that email, then sign in again.`}
+      >
         <SignOut variant="outline" />
       </CenteredPage>
     );
@@ -138,38 +134,30 @@ export default async function AdminPage() {
       )}
 
       {staff && (
-        <section aria-label="Admins" className="flex flex-col gap-3">
-          <h2 className={headingClass}>Admins</h2>
+        <section aria-label="Staff" className="flex flex-col gap-3">
+          <h2 className={headingClass}>Staff</h2>
           {staff.map((m) => (
-            <Card key={m.user_id}>
+            <Card key={m.email}>
               <CardContent className="flex flex-wrap items-center gap-4">
                 <div className="flex min-w-48 flex-1 flex-col gap-1">
                   <p className="font-semibold wrap-anywhere">
-                    {m.email ?? "(no email)"}
+                    {m.email}
                     {m.user_id === me.id && <span className="text-muted-foreground"> (you)</span>}
                   </p>
                   <p className={metaClass}>
-                    {m.role.toLowerCase()} · {m.last_sign_in_at ? "has signed in" : "invited, not signed in yet"}
+                    {m.role === "ADMIN" ? "admin" : "officer"} · {m.user_id ? "signed in with Google" : "waiting for their first sign-in"}
                   </p>
                 </div>
-                {!m.last_sign_in_at && m.email && <ResendInviteButton userId={m.user_id} />}
+                {m.user_id !== me.id && <RevokeStaffButton email={m.email} />}
               </CardContent>
             </Card>
           ))}
           <Card>
             <CardHeader>
-              <CardTitle className="font-display text-2xl font-extrabold tracking-display uppercase">Invite an admin</CardTitle>
+              <CardTitle className="font-display text-2xl font-extrabold tracking-display uppercase">Authorize someone</CardTitle>
             </CardHeader>
             <CardContent>
-              <InviteAdminForm />
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle className="font-display text-2xl font-extrabold tracking-display uppercase">Change my password</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ChangePasswordForm />
+              <AuthorizeStaffForm />
             </CardContent>
           </Card>
           <p className="text-xs text-muted-foreground">

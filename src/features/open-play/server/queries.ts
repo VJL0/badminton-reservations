@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import {
   activeSessionCodeSchema,
+  displayNameSchema,
   opsHealthSchema,
   type Snapshot,
   type Summary,
@@ -18,6 +19,11 @@ import { rpc, type Supabase } from "./db";
 /** The code of the live session, or null when nothing is running. Only one session is live at a time. */
 export async function getActiveSessionCode(supabase?: Supabase): Promise<string | null> {
   return activeSessionCodeSchema.parse(await rpc(supabase ?? (await createClient()), "get_active_session_code"));
+}
+
+/** The name this login has saved, or null before they have entered one. Needs a signed-in user. */
+export async function getDisplayName(supabase: Supabase): Promise<string | null> {
+  return displayNameSchema.parse(await rpc(supabase, "get_display_name"));
 }
 
 /** The board of a session by its QR code, or null when there is no such session. */

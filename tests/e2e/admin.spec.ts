@@ -1,14 +1,16 @@
 import { expect, test } from "@playwright/test";
 import {
+  APP_ORIGIN,
   anonymousPlayer,
   createAdmin,
   type Db,
   discardSession,
+  googleLogin,
   newPhone,
-  PASSWORD,
-  privileged,
   removeUser,
   requireNoLiveSession,
+  signInBrowser,
+  sql,
   startSession,
 } from "./support";
 
@@ -74,56 +76,103 @@ test("duplicate finishes and racing court edits leave a consistent board", async
   }
 });
 
-test("an invited officer chooses a password, then signs in with it", async ({ browser }) => {
-  const service = privileged();
-  const email = `invited-${crypto.randomUUID()}@e2e.test`;
-  const origin = "http://127.0.0.1:3100";
-  // The link Supabase would email: the same one, handed to us instead of a mailbox.
-  const { data, error } = await service.auth.admin.generateLink({
-    type: "invite",
-    email,
-    options: { redirectTo: `${origin}/admin/onboarding` },
-  });
-  if (error || !data.user) throw error ?? new Error("no invite link");
-  await service.rpc("grant_staff", { p_user_id: data.user.id, p_role: "ADMIN" });
-  const phone = await newPhone(browser, "Invited");
+test("staff sign-in is Continue with Google, nothing else", async ({ browser }) => {
+  const phone = await newPhone(browser, "Staff");
   try {
-    await phone.page.goto(data.properties.action_link);
-    await expect(phone.page.getByRole("heading", { name: "Choose a password" })).toBeVisible();
-
-    await phone.page.getByLabel("New password").fill("short");
-    await phone.page.getByRole("button", { name: "Save password" }).click();
-    await expect(phone.page.getByText("at least 10 characters", { exact: false }).first()).toBeVisible();
-
-    await phone.page.getByLabel("New password").fill(PASSWORD);
-    await phone.page.getByRole("button", { name: "Save password" }).click();
-    await expect(phone.page).toHaveURL(/\/admin$/);
-    await expect(phone.page.getByText("Officer console").first()).toBeVisible();
-
-    // A brand-new browser signs in with the password they just chose.
-    const again = await newPhone(browser, "Again");
-    try {
-      await again.page.goto("/admin/login");
-      await again.page.getByLabel("Email").fill(email);
-      await again.page.getByLabel("Password").fill(PASSWORD);
-      await again.page.getByRole("button", { name: "Sign in" }).click();
-      await expect(again.page).toHaveURL(/\/admin$/);
-    } finally {
-      await again.context.close();
-    }
+    let authorize: URL | undefined;
+    // Hold the browser at Supabase's authorize endpoint: what matters is the request it makes, not Google's page.
+    await phone.page.route("**/auth/v1/authorize**", async (route) => {
+      authorize = new URL(route.request().url());
+      await route.fulfill({ status: 200, contentType: "text/html", body: "<title>Google</title>" });
+    });
+    await phone.page.goto("/admin/login");
+    await expect(phone.page.getByLabel("Password")).toHaveCount(0);
+    await expect(phone.page.getByLabel("Email")).toHaveCount(0);
+    await phone.page.getByRole("button", { name: "Continue with Google" }).click();
+    await expect.poll(() => authorize?.searchParams.get("provider")).toBe("google");
+    expect(authorize?.searchParams.get("code_challenge"), "PKCE").toBeTruthy();
+    expect(authorize?.searchParams.get("code_challenge_method")).toBe("s256");
+    expect(authorize?.searchParams.get("redirect_to")).toBe(`${APP_ORIGIN}/auth/callback?next=%2Fadmin`);
+    expect(authorize?.searchParams.get("prompt")).toBe("select_account");
   } finally {
     await phone.context.close();
-    await removeUser(data.user.id);
   }
 });
 
-test("an expired or reused link says so instead of failing silently", async ({ browser }) => {
+test("a cancelled or invalid Google callback returns to sign-in with a message", async ({ browser }) => {
   const phone = await newPhone(browser, "Nobody");
   try {
-    await phone.page.goto("/admin/onboarding");
-    await expect(phone.page.getByText("expired or was already used")).toBeVisible();
+    await phone.page.goto("/auth/callback?error=access_denied");
+    await expect(phone.page).toHaveURL(/\/admin\/login\?error=cancelled$/);
+    await expect(phone.page.getByText("Google sign-in was cancelled.")).toBeVisible();
+
+    // A code nobody issued (or one replayed from another browser: there is no verifier cookie here) exchanges for nothing.
+    await phone.page.goto("/auth/callback?code=not-a-real-code&next=https://evil.example");
+    await expect(phone.page).toHaveURL(/\/admin\/login\?error=failed$/);
+    await expect(phone.page.getByText("didn't complete")).toBeVisible();
   } finally {
     await phone.context.close();
+  }
+});
+
+test("Google alone grants nothing; an authorized email is linked on first sign-in and can be removed", async ({ browser }) => {
+  const admin = await createAdmin();
+  const adminPhone = await newPhone(browser, "Admin");
+  const staffPhone = await newPhone(browser, "Staff");
+  // A Workspace address: access follows the staff list, not the domain.
+  const email = `new-${crypto.randomUUID()}@temple.edu`;
+  let staffId: string | undefined;
+  try {
+    await signInBrowser(adminPhone.context, admin);
+    await adminPhone.page.goto("/admin");
+    await adminPhone.page.getByLabel("Google account email").fill(email);
+    await adminPhone.page.getByLabel("Role").selectOption("OPERATOR");
+    await adminPhone.page.getByRole("button", { name: "Authorize" }).click();
+    await expect(adminPhone.page.getByText(`${email} can now sign in with Google.`)).toBeVisible();
+    const card = adminPhone.page.locator('[data-slot="card"]', { hasText: email });
+    await expect(card.getByText("waiting for their first sign-in")).toBeVisible();
+
+    // Their first Google sign-in: a verified identity for that email. The database links it to the authorization.
+    const staff = await googleLogin(email);
+    staffId = staff.id;
+    await signInBrowser(staffPhone.context, staff);
+    await staffPhone.page.goto("/admin");
+    await expect(staffPhone.page.getByText("Officer console").first()).toBeVisible();
+    await expect(staffPhone.page.getByText("Authorize someone")).toHaveCount(0); // an officer, not an admin
+    expect((await staff.db.rpc("current_staff_role")).data).toBe("OPERATOR");
+    expect((await staff.db.rpc("list_staff")).error?.message).toBe("not_staff"); // and the roster stays admin-only
+
+    await adminPhone.page.reload();
+    await expect(card.getByText("signed in with Google")).toBeVisible();
+
+    // Removing them ends access on their very next request.
+    await card.getByRole("button", { name: "Remove" }).click();
+    await card.getByRole("button", { name: "Confirm remove" }).click();
+    await expect(adminPhone.page.getByText(email)).toHaveCount(0);
+    await staffPhone.page.goto("/admin");
+    await expect(staffPhone.page.getByRole("heading", { name: "Not authorized" })).toBeVisible();
+    expect((await staff.db.rpc("current_staff_role")).data).toBeNull();
+  } finally {
+    await Promise.all([adminPhone.context.close(), staffPhone.context.close()]);
+    await sql("delete from app.staff_authorizations where email = $1", [email]);
+    if (staffId) await removeUser(staffId);
+    await removeUser(admin.id);
+  }
+});
+
+test("a Google account nobody authorized gets no access", async ({ browser }) => {
+  const stranger = await googleLogin(`stranger-${crypto.randomUUID()}@temple.edu`);
+  const phone = await newPhone(browser, "Stranger");
+  try {
+    await signInBrowser(phone.context, stranger);
+    await phone.page.goto("/admin");
+    await expect(phone.page.getByRole("heading", { name: "Not authorized" })).toBeVisible();
+    await expect(phone.page.getByText(stranger.email)).toBeVisible();
+    expect((await stranger.db.rpc("list_sessions")).error?.message).toBe("not_staff");
+    expect((await stranger.db.rpc("claim_staff_access")).data).toBeNull();
+  } finally {
+    await phone.context.close();
+    await removeUser(stranger.id);
   }
 });
 
@@ -132,11 +181,7 @@ test("system health is for admins only", async ({ browser }) => {
   const phone = await newPhone(browser, "Admin");
   const player = await newPhone(browser, "Player");
   try {
-    await phone.page.goto("/admin/login");
-    await phone.page.getByLabel("Email").fill(admin.email);
-    await phone.page.getByLabel("Password").fill(PASSWORD);
-    await phone.page.getByRole("button", { name: "Sign in" }).click();
-    await expect(phone.page).toHaveURL(/\/admin$/);
+    await signInBrowser(phone.context, admin);
     await phone.page.goto("/admin/health");
     await expect(phone.page.getByRole("heading", { name: "System health" })).toBeVisible();
     await expect(phone.page.getByText("Timer: finish-overdue-rounds")).toBeVisible();

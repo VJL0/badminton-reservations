@@ -6,7 +6,7 @@ import type { Database } from "./database.types";
 
 /**
  * Client holding the secret key: it bypasses RLS, but it only ever calls the few `api` functions granted to
- * `service_role` (the push worker's queue, and granting staff), never tables. Server code only, after the
+ * `service_role` (the push worker's queue), never tables. Server code only, after the
  * caller has been verified where the action needs it. The key must never be NEXT_PUBLIC_*.
  */
 export function createPrivilegedSupabaseClient() {

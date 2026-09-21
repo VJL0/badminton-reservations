@@ -19,6 +19,11 @@ export type Database = {
         Args: { p_session_id: string; p_side_a?: number; p_side_b?: number }
         Returns: undefined
       }
+      authorize_staff: {
+        Args: { p_email: string; p_role: string }
+        Returns: undefined
+      }
+      claim_staff_access: { Args: never; Returns: string }
       create_session: {
         Args: {
           p_auto_requeue?: boolean
@@ -39,12 +44,9 @@ export type Database = {
       end_session: { Args: { p_session_id: string }; Returns: undefined }
       finish_round: { Args: { p_round_id: string }; Returns: undefined }
       get_active_session_code: { Args: never; Returns: string }
+      get_display_name: { Args: never; Returns: string }
       get_session_summary: { Args: { p_session_id: string }; Returns: Json }
       get_snapshot: { Args: { p_code: string }; Returns: Json }
-      grant_staff: {
-        Args: { p_role: string; p_user_id: string }
-        Returns: undefined
-      }
       join_queue: {
         Args: { p_court_id?: string; p_session_id: string }
         Returns: undefined
@@ -73,6 +75,7 @@ export type Database = {
         Returns: undefined
       }
       resume_round: { Args: { p_round_id: string }; Returns: undefined }
+      revoke_staff: { Args: { p_email: string }; Returns: undefined }
       save_push_subscription: {
         Args: { p_auth: string; p_endpoint: string; p_p256dh: string }
         Returns: undefined

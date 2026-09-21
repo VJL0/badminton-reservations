@@ -5,10 +5,10 @@ import {
   discardSession,
   enter,
   newPhone,
-  PASSWORD,
   type Phone,
   removeUser,
   requireNoLiveSession,
+  signInBrowser,
   startSession,
   type TestAdmin,
 } from "./support";
@@ -98,11 +98,7 @@ test("ending a game, then the session, reaches every screen", async ({ browser }
   // An officer opens the board and ends court 1's game.
   const officer = await newPhone(browser, "Officer");
   phones.push(officer);
-  await officer.page.goto("/admin/login");
-  await officer.page.getByLabel("Email").fill(admin.email);
-  await officer.page.getByLabel("Password").fill(PASSWORD);
-  await officer.page.getByRole("button", { name: "Sign in" }).click();
-  await expect(officer.page).toHaveURL(/\/admin$/);
+  await signInBrowser(officer.context, admin);
   await officer.page.goto(`/play/${session.code}`);
   await expect(officer.page.getByText("LIVE", { exact: true })).toBeVisible();
   await officer.page.getByRole("button", { name: "End game early" }).first().click();

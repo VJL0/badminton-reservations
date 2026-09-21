@@ -13,6 +13,8 @@ $$;
 
 select is(pg_temp.executable_by('authenticated'), array[
   'api.add_court(uuid, integer, integer)',
+  'api.authorize_staff(text, text)',
+  'api.claim_staff_access()',
   'api.create_session(text, integer, integer, text, boolean)',
   'api.current_staff_role()',
   'api.delete_court(uuid)',
@@ -21,6 +23,7 @@ select is(pg_temp.executable_by('authenticated'), array[
   'api.end_session(uuid)',
   'api.finish_round(uuid)',
   'api.get_active_session_code()',
+  'api.get_display_name()',
   'api.get_session_summary(uuid)',
   'api.get_snapshot(text)',
   'api.join_queue(uuid, uuid)',
@@ -31,6 +34,7 @@ select is(pg_temp.executable_by('authenticated'), array[
   'api.pause_round(uuid)',
   'api.remove_player(uuid, uuid)',
   'api.resume_round(uuid)',
+  'api.revoke_staff(text)',
   'api.save_push_subscription(text, text, text)',
   'api.set_display_name(text)',
   'api.start_round(uuid)',
@@ -42,13 +46,12 @@ select is(pg_temp.executable_by('anon'), array['api.get_active_session_code()'],
   'signed-out visitors can only ask which session is live');
 
 select is(pg_temp.executable_by('service_role'), array[
-  'api.grant_staff(uuid, text)',
   'api.push_ack(bigint)',
   'api.push_claim(integer, integer)',
   'api.push_forget_subscription(text)',
   'api.push_retry(bigint, integer)',
   'api.push_subscriptions_of(uuid)'
-], 'the server-side secret key can call exactly the worker and invite functions');
+], 'the server-side secret key can call exactly the push worker functions, and nothing that grants access');
 
 select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
             where n.nspname in ('api', 'app', 'public')

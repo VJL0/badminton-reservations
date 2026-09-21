@@ -7,7 +7,7 @@ import { z } from "zod";
  */
 const production = process.env.NODE_ENV === "production";
 
-// The one address this app is known by: the printed QR, invite and password-reset links, push deep links.
+// The one address this app is known by: the printed join QR and push deep links.
 // Never derived from request headers, so a preview deployment or a stray Host header cannot change it.
 // On Vercel it falls back to the project's production domain; elsewhere it must be set in production.
 const vercelDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL;
@@ -37,6 +37,3 @@ if (!parsed.success) {
 }
 
 export const serverEnv = parsed.data;
-
-/** The absolute URL of a path on this app, always on the canonical origin. */
-export const appUrlFor = (path: string) => new URL(path, serverEnv.APP_URL).href;

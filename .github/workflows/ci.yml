@@ -67,7 +67,7 @@ jobs:
           docker ps --format 'table {{.Names}}\t{{.Status}}'
 
   # Real browsers, one per player, against the production build and the local Supabase stack: the waiting
-  # phone that opens the queue by itself, joins racing each other, offline phones catching up, invitations.
+  # phone that opens the queue by itself, joins racing each other, offline phones catching up, Google staff access.
   e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 20

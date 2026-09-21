@@ -245,22 +245,6 @@ begin
   perform app._commit_session(v_court.session_id);
 end $$;
 
------------------------------------------------------------------- admins: staff roster
-
--- Roster of staff accounts, with emails (which live in auth.users, unreachable by clients).
-create function api.list_staff() returns jsonb
-language plpgsql stable security definer set search_path = '' as $$
-begin
-  perform app._require_staff(true);
-  return coalesce((
-    select jsonb_agg(jsonb_build_object(
-             'user_id', s.user_id, 'email', u.email, 'role', s.role,
-             'created_at', s.created_at, 'last_sign_in_at', u.last_sign_in_at)
-           order by s.created_at)
-      from app.staff s
-      join auth.users u on u.id = s.user_id), '[]'::jsonb);
-end $$;
-
 ------------------------------------------------------------------ the summary
 
 -- Staff-only. Works for live sessions too (everything measured up to now).
@@ -419,6 +403,5 @@ grant execute on function
   api.update_session_settings(uuid, integer, boolean, boolean, integer, boolean),
   api.add_court(uuid, integer, integer),
   api.update_court(uuid, integer, integer),
-  api.delete_court(uuid),
-  api.list_staff()
+  api.delete_court(uuid)
 to authenticated;
