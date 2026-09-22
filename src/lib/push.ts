@@ -15,9 +15,9 @@ export const pushPayloadSchema = z.object({
 });
 export type PushPayload = z.infer<typeof pushPayloadSchema>;
 
-/** Push needs the VAPID pair and the service-role key (to read subscriptions). Without them it is simply off. */
+/** Push needs the VAPID pair and the secret key (to read subscriptions). Without them it is simply off. */
 export function pushConfigured() {
-  return !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
+  return !!(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.SUPABASE_SECRET_KEY);
 }
 
 /** Send one notification to every device the player has subscribed. Dead subscriptions are forgotten. */
