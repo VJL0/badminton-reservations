@@ -32,7 +32,6 @@ self.addEventListener("push", (event) => {
 				requireInteraction: isCourt, // stays until dismissed: it's the one you must not miss
 				vibrate: isCourt ? [250, 120, 250, 120, 250] : [200, 100, 200],
 				timestamp: Date.now(),
-				data: { url: data.url || "/" },
 			}),
 			"setAppBadge" in self.navigator
 				? self.navigator.setAppBadge(1).catch(() => {})
@@ -45,8 +44,7 @@ self.addEventListener("notificationclick", (event) => {
 	event.notification.close();
 	if ("clearAppBadge" in self.navigator)
 		self.navigator.clearAppBadge().catch(() => {});
-	const url = new URL(event.notification.data?.url || "/", self.location.origin)
-		.href;
+	const url = new URL("/", self.location.origin).href;
 	event.waitUntil(
 		self.clients
 			.matchAll({ type: "window", includeUncontrolled: true })

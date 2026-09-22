@@ -33,7 +33,7 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
       const supabase = createClient();
       const { data } = await supabase.auth.getSession();
       if (!data.session) {
-        // Signing in from the browser keeps Supabase's per-IP rate limit per player.
+        // From the browser, so Supabase rate-limits per player IP.
         const { error: signInError } = await supabase.auth.signInAnonymously({
           options: { captchaToken: token },
         });
@@ -80,7 +80,7 @@ export function NameEntry({ sessionCode, nonce }: { sessionCode: string; nonce?:
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             Staff?{" "}
-            <Link href="/admin/login" className="underline underline-offset-4 hover:text-foreground">
+            <Link href="/admin" className="underline underline-offset-4 hover:text-foreground">
               Sign in
             </Link>
           </p>

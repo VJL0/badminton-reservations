@@ -6,11 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 
 const POLL_MS = 5000;
 
-/**
- * Sits on the "nothing is running" page and opens the queue the moment a session starts, so a player who
- * arrived early doesn't have to scan or refresh. Checks every few seconds while the page is showing, and
- * right away when the phone wakes up or comes back online.
- */
+/** Re-renders the page when a session starts. Polls while visible, and on wake or reconnect. */
 export function WaitingForSession() {
   const router = useRouter();
 
@@ -26,10 +22,10 @@ export function WaitingForSession() {
         const { data } = await supabase.rpc("get_active_session_code");
         if (!stopped && typeof data === "string") {
           stopped = true;
-          router.replace(`/play/${data}`);
+          router.refresh();
         }
       } catch {
-        // Offline or a blip: the next check tries again.
+        // The next check retries.
       } finally {
         inFlight = false;
       }
