@@ -2,26 +2,22 @@
 
 import { Menu } from "@base-ui/react/menu";
 import Link from "next/link";
-import { signOut } from "../actions/admin";
+import { staffSignOut } from "../actions/staff-auth";
 
 const item =
   "flex min-h-11 w-full cursor-pointer items-center rounded-lg px-3 py-2.5 text-left text-sm font-semibold outline-hidden data-highlighted:bg-ink/10";
 
-/** Account menu for signed-in staff: the name in the header opens links to the console and sign out. */
-export function StaffMenu({ name, role }: { name: string | null; role: string }) {
-  const initial = (name?.trim()[0] ?? "?").toUpperCase();
+/** Menu for anyone signed in with the staff code: every staff member has the same permissions, so there's no per-person identity to show. */
+export function StaffMenu() {
   return (
     <Menu.Root>
       <Menu.Trigger
-        aria-label={`Staff menu for ${name ?? "you"}`}
+        aria-label="Staff menu"
         className="flex min-h-11 min-w-11 cursor-pointer items-center justify-center gap-2 rounded-xl p-1 text-right outline-hidden hover:bg-ink/5 focus-visible:ring-2 focus-visible:ring-mat data-popup-open:bg-ink/10 lg:px-2"
       >
-        <span className="hidden flex-col items-end gap-0.5 lg:flex">
-          <span className="text-base font-bold">{name}</span>
-          <span className="font-mono text-caption tracking-caps text-ink-2 uppercase">{role.toLowerCase()}</span>
-        </span>
+        <span className="hidden font-mono text-caption tracking-caps text-ink-2 uppercase lg:flex">Staff</span>
         <span aria-hidden className="flex size-9 items-center justify-center rounded-full bg-ink text-sm font-bold text-white">
-          {initial}
+          ★
         </span>
         <svg
           aria-hidden
@@ -40,14 +36,13 @@ export function StaffMenu({ name, role }: { name: string | null; role: string })
         <Menu.Positioner align="end" sideOffset={8} className="z-50">
           <Menu.Popup className="min-w-48 rounded-xl border bg-white p-1.5 text-ink shadow-lg outline-hidden">
             <div className="px-3 pt-1 pb-1.5 lg:hidden">
-              <p className="text-sm font-bold">{name}</p>
-              <p className="font-mono text-caption tracking-caps text-ink-2 uppercase">{role.toLowerCase()}</p>
+              <p className="font-mono text-caption tracking-caps text-ink-2 uppercase">Staff</p>
             </div>
             <Menu.LinkItem render={<Link href="/admin" />} className={item}>
-              Officer console
+              Staff console
             </Menu.LinkItem>
             {/* A real form so sign out works even before hydration; keep the menu mounted until it submits. */}
-            <form action={signOut}>
+            <form action={staffSignOut}>
               <Menu.Item nativeButton render={<button type="submit" />} closeOnClick={false} className={item}>
                 Sign out
               </Menu.Item>

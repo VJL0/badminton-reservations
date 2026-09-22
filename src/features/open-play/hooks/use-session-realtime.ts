@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { getSnapshotAction } from "../actions/snapshot";
 import type { Snapshot } from "../types";
 
 const POLL_MS = 30_000; // safety net only; Broadcast is the primary signal
@@ -12,8 +13,13 @@ const COALESCE_MS = 150; // a burst of broadcasts (several joins at once) become
  * on `session_changed` (and on reconnect / tab wake) we refetch the snapshot.
  * `offsetMs` = server clock − local clock, so timers are correct even when the
  * phone's clock is wrong.
+ *
+ * Broadcast requires a Supabase session (the `realtime.messages` RLS policy is `to authenticated`
+ * only — see `20260918000004_realtime.sql`), which staff don't have unless they've also gone
+ * through the player flow. A staff-only browser falls back to the `POLL_MS` safety net instead of
+ * failing outright — less snappy, not broken.
  */
-export function useSessionRealtime(initial: Snapshot) {
+export function useSessionRealtime(initial: Snapshot, isStaff = false) {
   const [snapshot, setSnapshot] = useState(initial);
   const [offsetMs, setOffsetMs] = useState(0);
   const [connected, setConnected] = useState(false);
@@ -24,14 +30,12 @@ export function useSessionRealtime(initial: Snapshot) {
   const refresh = useCallback(async () => {
     const ticket = ++latest.current;
     const sentAt = Date.now();
-    const { data, error } = await createClient().rpc("get_snapshot", {
-      p_code: code,
-    });
+    const { data, error } = isStaff ? await getSnapshotAction(code) : await createClient().rpc("get_snapshot", { p_code: code });
     if (error || !data || ticket !== latest.current) return; // stale response
     const midpoint = (sentAt + Date.now()) / 2;
     setSnapshot(data as Snapshot);
     setOffsetMs(Date.parse((data as Snapshot).server_now) - midpoint);
-  }, [code]);
+  }, [code, isStaff]);
 
   useEffect(() => {
     const supabase = createClient();

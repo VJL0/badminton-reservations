@@ -8,7 +8,6 @@ import pg from "pg";
 const url = process.env.DATABASE_URL ?? "postgresql://postgres:postgres@127.0.0.1:54322/postgres";
 const PLAYERS = 20;
 const uid = (n) => `00000000-0000-0000-0001-${String(n).padStart(12, "0")}`;
-const ADMIN = uid(999);
 const pool = new pg.Pool({ connectionString: url, max: PLAYERS + 5 });
 
 async function asUser(id, sql, params = []) {
@@ -27,16 +26,32 @@ async function asUser(id, sql, params = []) {
     c.release();
   }
 }
+// Staff-only/staff-or-self functions now recognize the service role, not a public.staff row (see
+// 20260922000001_staff_code_auth.sql) — no user needed at all, just the role.
+async function asStaff(sql, params = []) {
+  const c = await pool.connect();
+  try {
+    await c.query("begin");
+    await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ role: "service_role" })]);
+    await c.query("set local role service_role");
+    const r = await c.query(sql, params);
+    await c.query("commit");
+    return r;
+  } catch (e) {
+    await c.query("rollback").catch(() => {});
+    throw e;
+  } finally {
+    c.release();
+  }
+}
 const one = async (sql, params) => (await pool.query(sql, params)).rows[0];
 
-const users = [ADMIN, ...Array.from({ length: PLAYERS }, (_, i) => uid(i + 1))];
+const users = Array.from({ length: PLAYERS }, (_, i) => uid(i + 1));
 const code = `C${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
 let sessionId;
 try {
   await pool.query("insert into auth.users (id) select unnest($1::uuid[]) on conflict do nothing", [users]);
-  await pool.query("insert into public.staff (user_id, role) values ($1, 'ADMIN') on conflict do nothing", [ADMIN]);
   await Promise.all(Array.from({ length: PLAYERS }, (_, i) => asUser(uid(i + 1), "select public.set_display_name($1)", [`P${i + 1}`])));
-  await asUser(ADMIN, "select public.set_display_name('Admin')");
   assert.equal(
     (await one("select count(*)::int n from public.open_play_sessions where status = 'ACTIVE'")).n,
     0,
@@ -46,7 +61,7 @@ try {
   // 5 simultaneous "create session" calls -> exactly one wins, the rest are told a session is already live
   const created = await Promise.allSettled(
     Array.from({ length: 5 }, (_, i) =>
-      asUser(ADMIN, "select public.create_session('Concurrency', 3, 1200, $1) as id", [i === 0 ? code : `${code}${i}`]),
+      asStaff("select public.create_session('Concurrency', 3, 1200, $1) as id", [i === 0 ? code : `${code}${i}`]),
     ),
   );
   const won = created.filter((r) => r.status === "fulfilled");
@@ -87,7 +102,7 @@ try {
                             where r.session_id=$1 and c.court_number=2 and r.status='ACTIVE'`,
     [sessionId],
   );
-  await Promise.all(Array.from({ length: 5 }, () => asUser(ADMIN, "select public.finish_round($1)", [round.id])));
+  await Promise.all(Array.from({ length: 5 }, () => asStaff("select public.finish_round($1)", [round.id])));
   const live = await one(
     `select count(*)::int n from public.rounds r join public.courts c on c.id=r.court_id
                            where r.session_id=$1 and c.court_number=2 and r.status='ACTIVE'`,
@@ -105,7 +120,6 @@ try {
 } finally {
   // Leave the database as we found it: the session cascades, then the fake users.
   if (sessionId) await pool.query("delete from public.open_play_sessions where id = $1", [sessionId]);
-  await pool.query("delete from public.staff where user_id = $1", [ADMIN]);
   await pool.query("delete from auth.users where id = any($1::uuid[])", [users]);
   await pool.end();
 }

@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Shown at once while the officer console (several database calls) or a session summary is computed,
+// Shown at once while the staff console (several database calls) or a session summary is computed,
 // so a tap on "Details" responds immediately. Same width and rhythm as the pages it stands in for.
 export default function Loading() {
   return (

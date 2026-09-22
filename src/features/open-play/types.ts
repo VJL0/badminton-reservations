@@ -51,7 +51,6 @@ export type Snapshot = {
     round_id: string | null;
     preferred_court_id: string | null;
     queue_position: number | null;
-    role: "ADMIN" | "OPERATOR" | null;
   };
   courts: Court[];
   queue: QueueEntry[];

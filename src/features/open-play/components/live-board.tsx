@@ -33,9 +33,9 @@ const NOTICES = {
   ended: "That session has ended. This is the session running now.",
 } as const;
 
-export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: keyof typeof NOTICES }) {
+export function LiveBoard({ initial, notice, isStaff = false }: { initial: Snapshot; notice?: keyof typeof NOTICES; isStaff?: boolean }) {
   const router = useRouter();
-  const { snapshot, offsetMs, connected, refresh } = useSessionRealtime(initial);
+  const { snapshot, offsetMs, connected, refresh } = useSessionRealtime(initial, isStaff);
   const now = useNow(initial.server_now, offsetMs);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -84,10 +84,10 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
   }, [notice]);
 
   // The session ended while a player was watching: if another one is live, move them there after a moment
-  // (long enough to read the message). Officers stay put; they may want to look at the final board.
+  // (long enough to read the message). Staff stay put; they may want to look at the final board.
   const [moving, setMoving] = useState<string | null>(null);
   const ended = session.status === "ENDED";
-  const isPlayer = me.role === null;
+  const isPlayer = !isStaff;
   useEffect(() => {
     if (!ended || !isPlayer) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -170,8 +170,8 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
             {/* On a phone the dot says it (green / amber); the word is for screen readers and wider screens. */}
             <span className="max-sm:sr-only">{connected ? "LIVE" : "RECONNECTING"}</span>
           </span>
-          {me.role ? (
-            <StaffMenu name={me.display_name} role={me.role} />
+          {isStaff ? (
+            <StaffMenu />
           ) : (
             <div className="hidden flex-col items-end gap-0.5 lg:flex">
               <span className="text-base font-bold">{me.display_name}</span>
@@ -201,7 +201,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
         onFinish={(roundId) => run(() => finishRound(roundId))}
         onTogglePause={(roundId, pause) => run(() => setRoundPaused(roundId, pause))}
       />
-      {me.role === "ADMIN" && session.status === "ACTIVE" && (
+      {isStaff && session.status === "ACTIVE" && (
         <PanelBoundary label="Session settings">
           <SessionSettings snapshot={snapshot} busy={pending} run={run} />
         </PanelBoundary>
@@ -225,6 +225,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
               key={court.id}
               court={court}
               me={me}
+              isStaff={isStaff}
               now={now}
               durationSeconds={session.game_duration_seconds}
               autoStart={session.auto_start}
@@ -242,7 +243,7 @@ export function LiveBoard({ initial, notice }: { initial: Snapshot; notice?: key
 
       {session.status === "ACTIVE" && (
         <PanelBoundary label="The queue">
-          <Queue queue={queue} me={me} eta={eta} onRemove={(playerId) => run(() => removePlayer(session.id, playerId))} />
+          <Queue queue={queue} me={me} isStaff={isStaff} eta={eta} onRemove={(playerId) => run(() => removePlayer(session.id, playerId))} />
         </PanelBoundary>
       )}
     </main>

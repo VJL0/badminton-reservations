@@ -1,4 +1,6 @@
 import "server-only";
+import { hasStaffSession } from "@/lib/staff-session";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Database } from "@/lib/supabase/database.types";
 import { createClient } from "@/lib/supabase/server";
 
@@ -7,8 +9,8 @@ export type ActionResult = { ok: true } | { ok: false; error: string };
 const MESSAGES: Record<string, string> = {
   not_authenticated: "Please enter your name first.",
   profile_required: "Please enter your name first.",
-  not_staff: "Only officers can do that.",
-  not_allowed: "Only the players on this court or an officer can start or end the game.",
+  not_staff: "Only staff can do that.",
+  not_allowed: "Only the players on this court or staff can start or end the game.",
   game_in_progress: "A game is running on that court. Try again once it ends.",
   session_ended: "This session has ended.",
   session_active: "End the session before deleting it.",
@@ -30,21 +32,41 @@ const MESSAGES: Record<string, string> = {
 
 export const invalid: ActionResult = { ok: false, error: "Invalid request." };
 
-// Server Actions are public endpoints: authorization lives in the database
-// functions, which read the caller's JWT. This only forwards the call.
+// Server Actions are public endpoints: authorization lives either in the database function (reading
+// the caller's JWT) or, for the staff variants below, in the `hasStaffSession()` check that decides
+// which Supabase client makes the call.
 type Fns = Database["public"]["Functions"];
 /** Only functions clients may call: the `_internal` ones are locked away in the database. */
 type RpcName = Exclude<keyof Fns, `_${string}`>;
 
+function toResult(fn: string, error: { code?: string; message: string } | null): ActionResult {
+  if (!error) return { ok: true };
+  const friendly = MESSAGES[error.message];
+  // Known failures are user errors; anything else is ours to see in the logs.
+  if (!friendly) console.error(`[rpc] ${fn} failed: ${error.code ?? ""} ${error.message}`);
+  return { ok: false, error: friendly ?? "Something went wrong. Try again." };
+}
+
 // The generated types make a wrong function name or argument name a compile error, not a runtime one.
+/** Player-facing RPCs: always the caller's own (possibly anonymous) session. */
 export async function callRpc<F extends RpcName>(fn: F, args: Fns[F]["Args"]): Promise<ActionResult> {
   const supabase = await createClient();
   const { error } = await supabase.rpc(fn, args);
-  if (error) {
-    const friendly = MESSAGES[error.message];
-    // Known failures are user errors; anything else is ours to see in the logs.
-    if (!friendly) console.error(`[rpc] ${fn} failed: ${error.code ?? ""} ${error.message}`);
-    return { ok: false, error: friendly ?? "Something went wrong. Try again." };
+  return toResult(fn, error);
+}
+
+/** Staff-only RPCs: require a staff session, then run as the service role (bypasses the caller's own JWT entirely). */
+export async function callStaffOnlyRpc<F extends RpcName>(fn: F, args: Fns[F]["Args"]): Promise<ActionResult> {
+  if (!(await hasStaffSession())) return toResult(fn, { message: "not_staff" });
+  const { error } = await createAdminClient().rpc(fn, args);
+  return toResult(fn, error);
+}
+
+/** RPCs a staff member OR the players on the round may call: staff runs as the service role, everyone else as themselves. */
+export async function callStaffOrSelfRpc<F extends RpcName>(fn: F, args: Fns[F]["Args"]): Promise<ActionResult> {
+  if (await hasStaffSession()) {
+    const { error } = await createAdminClient().rpc(fn, args);
+    return toResult(fn, error);
   }
-  return { ok: true };
+  return callRpc(fn, args);
 }

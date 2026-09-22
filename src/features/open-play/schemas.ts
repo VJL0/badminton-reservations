@@ -15,13 +15,7 @@ export const createSessionSchema = z.object({
   autoRequeue: z.boolean(),
 });
 
-export const emailSchema = z.string().trim().toLowerCase().pipe(z.email("Enter a valid email"));
-export const passwordSchema = z
-  .string()
-  .min(10, "Use at least 10 characters")
-  .regex(/[a-z]/, "Include a lowercase letter")
-  .regex(/[A-Z]/, "Include an uppercase letter")
-  .regex(/[0-9]/, "Include a digit");
+export const staffCodeSchema = z.string().trim().min(1, "Enter the staff code").max(100, "That doesn't look right.");
 
 const sideSize = z.coerce.number().int().min(1, "A side needs at least one player").max(4, "At most four a side");
 

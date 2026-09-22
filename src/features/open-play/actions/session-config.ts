@@ -1,7 +1,7 @@
 "use server";
 
 import { courtFormatSchema, firstIssue, idSchema, sessionSettingsSchema } from "../schemas";
-import { type ActionResult, callRpc, invalid } from "./rpc";
+import { type ActionResult, callStaffOnlyRpc, invalid } from "./rpc";
 
 export async function updateSessionSettings(
   sessionId: string,
@@ -17,7 +17,7 @@ export async function updateSessionSettings(
   if (!id.success) return invalid;
   const p = sessionSettingsSchema.safeParse(input);
   if (!p.success) return { ok: false, error: firstIssue(p.error) };
-  return callRpc("update_session_settings", {
+  return callStaffOnlyRpc("update_session_settings", {
     p_session_id: id.data,
     p_game_duration_seconds: p.data.minutes * 60,
     p_auto_requeue: p.data.autoRequeue,
@@ -32,7 +32,7 @@ export async function addCourt(sessionId: string, sideA: number, sideB: number):
   const f = courtFormatSchema.safeParse({ sideA, sideB });
   if (!id.success) return invalid;
   if (!f.success) return { ok: false, error: firstIssue(f.error) };
-  return callRpc("add_court", {
+  return callStaffOnlyRpc("add_court", {
     p_session_id: id.data,
     p_side_a: f.data.sideA,
     p_side_b: f.data.sideB,
@@ -41,7 +41,7 @@ export async function addCourt(sessionId: string, sideA: number, sideB: number):
 
 export async function deleteCourt(courtId: string): Promise<ActionResult> {
   const id = idSchema.safeParse(courtId);
-  return id.success ? callRpc("delete_court", { p_court_id: id.data }) : invalid;
+  return id.success ? callStaffOnlyRpc("delete_court", { p_court_id: id.data }) : invalid;
 }
 
 export async function updateCourt(courtId: string, sideA: number, sideB: number): Promise<ActionResult> {
@@ -49,7 +49,7 @@ export async function updateCourt(courtId: string, sideA: number, sideB: number)
   const f = courtFormatSchema.safeParse({ sideA, sideB });
   if (!id.success) return invalid;
   if (!f.success) return { ok: false, error: firstIssue(f.error) };
-  return callRpc("update_court", {
+  return callStaffOnlyRpc("update_court", {
     p_court_id: id.data,
     p_side_a: f.data.sideA,
     p_side_b: f.data.sideB,
