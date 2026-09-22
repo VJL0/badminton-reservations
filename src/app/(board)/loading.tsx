@@ -1,6 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Same silhouette as the live board so the page doesn't jump when it arrives.
+// Matches the board's layout.
 export default function Loading() {
   return (
     <main className="mx-auto flex w-full max-w-340 flex-col gap-5 px-4 pt-5 lg:gap-7 lg:px-14 lg:pt-10" aria-busy="true">

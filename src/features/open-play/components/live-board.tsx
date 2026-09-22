@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useEffectEvent, useRef, useState, useTransition } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { createClient } from "@/lib/supabase/client";
 import { finishRound } from "../actions/finish-round";
 import { joinQueue } from "../actions/join-queue";
 import { leaveQueue } from "../actions/leave-queue";
@@ -28,12 +27,7 @@ import { SessionSettings } from "./session-settings";
 import { ShuttleIcon } from "./shuttle-icon";
 import { StaffMenu } from "./staff-menu";
 
-const NOTICES = {
-  "not-found": "That session code wasn't found, so we've taken you to the session that's running now.",
-  ended: "That session has ended. This is the session running now.",
-} as const;
-
-export function LiveBoard({ initial, notice, isStaff = false }: { initial: Snapshot; notice?: keyof typeof NOTICES; isStaff?: boolean }) {
+export function LiveBoard({ initial, isStaff = false }: { initial: Snapshot; isStaff?: boolean }) {
   const router = useRouter();
   const { snapshot, offsetMs, connected, refresh } = useSessionRealtime(initial, isStaff);
   const now = useNow(initial.server_now, offsetMs);
@@ -43,11 +37,7 @@ export function LiveBoard({ initial, notice, isStaff = false }: { initial: Snaps
   const { session, me, courts, queue } = snapshot;
   const eta = makeEta(snapshot, now);
 
-  // Timers run on the server clock. When one runs out, whoever is looking reports it and the database checks
-  // the clock, ignoring early or duplicate reports, so a small random delay just spreads the requests:
-  //  - a full court's start countdown -> start the game
-  //  - a running game past its time (when the session ends games automatically) -> end it, and the next game
-  //    steps on and starts. A server timer does the same every 30s for rooms where no phone is open.
+  // When a countdown or game timer runs out, any open board reports it; the database ignores early or duplicate reports.
   const reported = useRef(new Map<string, number>());
   const due = courts
     .flatMap((c) => {
@@ -63,49 +53,22 @@ export function LiveBoard({ initial, notice, isStaff = false }: { initial: Snaps
     if (!due) return;
     const report = () => {
       for (const key of due.split(",")) {
-        if (Date.now() - (reported.current.get(key) ?? 0) < 4500) continue; // already reported: give it a moment
+        if (Date.now() - (reported.current.get(key) ?? 0) < 4500) continue;
         reported.current.set(key, Date.now());
         const [kind, id] = key.split(":");
         if (!id) continue;
         void (kind === "start" ? startRound(id) : finishRound(id)).then(() => refresh());
       }
     };
-    const first = setTimeout(report, Math.random() * 1000); // spread simultaneous reports across phones
-    const retry = setInterval(report, 5000); // a report that failed is sent again
+    const first = setTimeout(report, Math.random() * 1000); // spread reports across phones
+    const retry = setInterval(report, 5000); // retry failed reports
     return () => {
       clearTimeout(first);
       clearInterval(retry);
     };
   }, [due, refresh]);
 
-  // The URL carried a one-time notice; drop it so a refresh doesn't repeat it.
-  useEffect(() => {
-    if (notice) window.history.replaceState(null, "", window.location.pathname);
-  }, [notice]);
-
-  // The session ended while a player was watching: if another one is live, move them there after a moment
-  // (long enough to read the message). Staff stay put; they may want to look at the final board.
-  const [moving, setMoving] = useState<string | null>(null);
-  const ended = session.status === "ENDED";
-  const isPlayer = !isStaff;
-  useEffect(() => {
-    if (!ended || !isPlayer) return;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    let cancelled = false;
-    void createClient()
-      .rpc("get_active_session_code")
-      .then(({ data }) => {
-        if (cancelled || typeof data !== "string" || data === session.code) return;
-        setMoving(data);
-        timer = setTimeout(() => router.replace(`/play/${data}?notice=ended`), 4000);
-      });
-    return () => {
-      cancelled = true;
-      clearTimeout(timer);
-    };
-  }, [ended, isPlayer, session.code, router]);
-
-  // Whatever the Home Screen icon was counting, the player has now seen it.
+  // Clear the Home Screen badge.
   useEffect(() => {
     const clear = () => document.visibilityState === "visible" && void navigator.clearAppBadge?.().catch(() => {});
     clear();
@@ -113,7 +76,6 @@ export function LiveBoard({ initial, notice, isStaff = false }: { initial: Snaps
     return () => document.removeEventListener("visibilitychange", clear);
   }, []);
 
-  // Keep the screen on while you're queued or on a court, and nudge you when your turn comes.
   useWakeLock(me.state !== "IDLE" && session.status === "ACTIVE");
   const alerts = useAlerts();
   const push = usePush();
@@ -121,12 +83,11 @@ export function LiveBoard({ initial, notice, isStaff = false }: { initial: Snaps
   const last = useRef<{ playing: boolean; next: boolean } | null>(null);
   const playing = me.state === "PLAYING";
   const upNext = isUpNext(me);
-  // An Effect Event always sees the latest `alerts` and `pending` without making the effect re-run for them:
-  // the effect below should fire when *your turn changes*, not on every render.
+  // Fires only when your turn changes, not when `alerts` or `pending` do.
   const onTurnChange = useEffectEvent((playingNow: boolean, upNextNow: boolean) => {
     const prev = last.current;
     last.current = { playing: playingNow, next: upNextNow };
-    if (!prev || pending) return; // first look, or the change is the player's own tap
+    if (!prev || pending) return; // first render, or the player's own tap
     if (playingNow && !prev.playing) alerts.notify("court");
     else if (upNextNow && !prev.next) alerts.notify("next");
   });
@@ -181,13 +142,6 @@ export function LiveBoard({ initial, notice, isStaff = false }: { initial: Snaps
         </div>
       </header>
 
-      {(notice || moving) && (
-        <Alert role="status">
-          <AlertDescription>
-            {moving ? "This session has ended. Taking you to the session running now…" : notice ? NOTICES[notice] : null}
-          </AlertDescription>
-        </Alert>
-      )}
       {session.status === "ACTIVE" && <AlertsPrompt alerts={alerts} push={push} onOpen={() => setAlertsOpen(true)} />}
       <PlayerStatus
         snapshot={snapshot}
@@ -195,7 +149,7 @@ export function LiveBoard({ initial, notice, isStaff = false }: { initial: Snaps
         eta={eta}
         busy={pending}
         onJoin={() => run(() => joinQueue(session.id))}
-        onHome={() => router.push("/")}
+        onHome={() => router.refresh()}
         onLeave={() => run(() => leaveQueue(session.id))}
         onStart={(roundId) => run(() => startRound(roundId))}
         onFinish={(roundId) => run(() => finishRound(roundId))}

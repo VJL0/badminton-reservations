@@ -1,13 +1,9 @@
 import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { Route } from "next";
 import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
 
 const COOKIE_NAME = "staff_session";
-// Fixed from sign-in, not renewed on activity: staff re-enter the code once every 30 days, not 30
-// days after their last visit. Good enough for how rarely this is used; a sliding session would need
-// to re-issue the cookie on each request, which Server Components can't do (only Actions/Route Handlers can).
+// 30 days from sign-in, not renewed on activity.
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30;
 
 function secret(): string {
@@ -46,7 +42,6 @@ function cookieOptions(maxAgeSeconds: number) {
   };
 }
 
-/** Sets the signed staff session cookie. Called after a successful code check, in a Server Action. */
 export async function createStaffSession(): Promise<void> {
   const jar = await cookies();
   const token = tokenFor(Date.now() + SESSION_DURATION_SECONDS * 1000);
@@ -61,9 +56,4 @@ export async function clearStaffSession(): Promise<void> {
 export async function hasStaffSession(): Promise<boolean> {
   const jar = await cookies();
   return isValidToken(jar.get(COOKIE_NAME)?.value);
-}
-
-/** For Server Components: redirects to sign-in when there's no valid staff session. */
-export async function requireStaffSession(loginUrl: Route = "/admin/login"): Promise<void> {
-  if (!(await hasStaffSession())) redirect(loginUrl);
 }

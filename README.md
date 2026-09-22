@@ -14,7 +14,7 @@ shared queue that feeds every court. Not a reservation system — a state machin
 
 ## How it works
 
-- **One session at a time.** The poster's QR points at `/`, which sends players to whichever session is live. The database
+- **One session at a time.** The poster's QR points at `/`, which is the live session's board. The database
   refuses a second live session (`already_active`); end tonight's before starting the next.
   When nothing is live, `/` waits and opens the queue by itself the moment a session starts; an ended board has a **Back to home** button.
 - **One FIFO queue.** Joining always enqueues first; the allocator then places players. A player can pick a specific court
@@ -43,7 +43,7 @@ pnpm dev                       # use http://127.0.0.1:3000 (matches Supabase's l
 
 ### Staff access
 
-Staff sign in at `/admin/login` with one shared code — no individual accounts, no email/password,
+Staff sign in at `/admin` with one shared code — no individual accounts, no email/password,
 no roles. Everyone who has the code has the same permissions.
 
 1. Pick a code.
@@ -135,7 +135,7 @@ Skipped by default; the app works without it, and the sound/vibration alert on t
 
 ### 4. First smoke test
 
-Set up staff access (see above), sign in at `/admin/login`, start a session, print the QR (it stays valid for every future session).
+Set up staff access (see above), sign in at `/admin`, start a session, print the QR (it stays valid for every future session).
 Then on two phones: enter a name, join, let the game run out (or press End game), rejoin.
 
 ### Housekeeping

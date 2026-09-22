@@ -1,15 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 import { LocalTime } from "@/components/local-time";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { idSchema } from "@/features/open-play/schemas";
 import { headingClass, metaClass } from "@/features/open-play/styles";
 import { formatDuration, formatPercent } from "@/lib/format";
-import { loginUrl } from "@/lib/redirects";
-import { requireStaffSession } from "@/lib/staff-session";
+import { hasStaffSession } from "@/lib/staff-session";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { SignIn } from "../../sign-in-form";
 import { PlayersList } from "./players-list";
 import type { Summary } from "./summary-types";
 
@@ -35,21 +35,21 @@ function Line({ label, value }: { label: string; value: string }) {
 }
 
 export default async function SessionSummaryPage({ params }: PageProps<"/admin/sessions/[id]">) {
-  const id = idSchema.safeParse((await params).id);
-  if (!id.success) redirect("/admin"); // not a session id: the list is the right page
+  if (!(await hasStaffSession())) return <SignIn />;
 
-  await requireStaffSession(loginUrl(`/admin/sessions/${id.data}`)); // sign in, then come straight back
+  const id = idSchema.safeParse((await params).id);
+  if (!id.success) notFound();
 
   const { data, error } = await createAdminClient().rpc("get_session_summary", {
     p_session_id: id.data,
   });
   if (error) throw new Error(`get_session_summary failed: ${error.message}`);
-  if (!data) redirect("/admin"); // no such session (deleted or mistyped)
+  if (!data) notFound();
   const { session, totals, court_use, courts, players, games } = data as Summary;
 
   const live = session.status === "ACTIVE";
   const tracked = session.wait_tracked;
-  // Most serious first: nobody-got-a-game before long waits, then longest wait.
+  // No-game flags first, then longest wait.
   const flagged = players
     .filter((p) => p.flags.length > 0)
     .sort(

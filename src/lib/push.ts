@@ -7,11 +7,6 @@ export const pushPayloadSchema = z.object({
   title: z.string().max(120),
   body: z.string().max(240),
   tag: z.string().max(40).optional(),
-  url: z
-    .string()
-    .regex(/^\/[A-Za-z0-9/_-]*$/)
-    .max(80)
-    .optional(),
 });
 export type PushPayload = z.infer<typeof pushPayloadSchema>;
 
@@ -44,7 +39,7 @@ export async function sendPush(playerId: string, payload: PushPayload) {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          JSON.stringify(payload),
+          JSON.stringify({ ...payload, url: "/" }),
           options,
         );
       } catch (e) {

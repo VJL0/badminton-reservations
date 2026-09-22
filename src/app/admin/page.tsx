@@ -7,9 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { staffSignOut } from "@/features/open-play/actions/staff-auth";
 import { ShuttleIcon } from "@/features/open-play/components/shuttle-icon";
 import { headingClass, metaClass } from "@/features/open-play/styles";
-import { requireStaffSession } from "@/lib/staff-session";
+import { hasStaffSession } from "@/lib/staff-session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { CreateSessionForm, DeleteSessionButton, EndSessionButton, JoinQr } from "./admin-client";
+import { SignIn } from "./sign-in-form";
 
 export const metadata: Metadata = { title: "Staff console" };
 
@@ -22,7 +23,6 @@ type SessionRow = {
   players: number;
 };
 
-/** One session: the live one (End) or an ended one (Delete). */
 function SessionCard({ session }: { session: SessionRow }) {
   const live = session.status === "ACTIVE";
   const linkClass = "inline-flex min-h-11 items-center px-1 underline underline-offset-4";
@@ -39,9 +39,9 @@ function SessionCard({ session }: { session: SessionRow }) {
           </p>
           <nav aria-label={`${session.name} links`} className="-mx-1 flex flex-wrap font-mono text-xs tracking-meta uppercase">
             {live && (
-              <a className={linkClass} href={`/play/${session.code}`}>
+              <Link className={linkClass} href="/">
                 Live board &amp; settings
-              </a>
+              </Link>
             )}
             <Link className={linkClass} href={`/admin/sessions/${session.id}`}>
               Details
@@ -55,7 +55,7 @@ function SessionCard({ session }: { session: SessionRow }) {
 }
 
 export default async function AdminPage() {
-  await requireStaffSession();
+  if (!(await hasStaffSession())) return <SignIn />;
 
   const admin = createAdminClient();
   const { data, error } = await admin.rpc("list_sessions");
@@ -64,7 +64,6 @@ export default async function AdminPage() {
   const h = await headers();
   const origin = `${h.get("x-forwarded-proto") ?? "http"}://${h.get("x-forwarded-host") ?? h.get("host")}`;
   const sessions = data as SessionRow[];
-  // The database allows one live session at a time (list_sessions is newest first).
   const live = sessions.find((s) => s.status === "ACTIVE");
   const past = sessions.filter((s) => s !== live);
 
