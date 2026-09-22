@@ -56,7 +56,7 @@ select id, 'ADMIN' from auth.users where email = 'you@example.com';
 
 Once one admin exists, more can be added from the **Admins** section of `/admin` (email only; the
 password starts as the shared default and the new admin is made to change it). This needs the
-server-only `SUPABASE_SERVICE_ROLE_KEY` (see `.env.example`); set it in Vercel too, **without** the
+server-only `SUPABASE_SECRET_KEY` (see `.env.example`); set it in Vercel too, **without** the
 `NEXT_PUBLIC_` prefix. Admins can also reset another admin's password to the default there.
 
 ## Scripts
@@ -122,14 +122,14 @@ NEXT_PUBLIC_TURNSTILE_SITE_KEY=<site key>
 ```
 
 These are inlined at build time: redeploy after changing them. The build fails with a clear message
-if the first two are missing. Never expose the service-role / secret key.
+if the first two are missing. Never expose the secret key.
 
 ### Optional: push notifications ("You're up next", "You're on court N")
 
 Skipped by default; the app works without it, and the sound/vibration alert on the page still works.
 
 1. `npx web-push generate-vapid-keys`. Set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
-   and a long random `PUSH_WEBHOOK_SECRET` in Vercel (plus `SUPABASE_SERVICE_ROLE_KEY`, already needed for admins). Redeploy.
+   and a long random `PUSH_WEBHOOK_SECRET` in Vercel (plus `SUPABASE_SECRET_KEY`, already needed for admins). Redeploy.
 2. Tell the database where to call, in the Supabase SQL editor (same secret as above):
    ```sql
    select vault.create_secret('https://<your-domain>/api/push', 'push_url');

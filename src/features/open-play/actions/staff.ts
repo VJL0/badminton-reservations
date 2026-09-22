@@ -30,7 +30,7 @@ async function addAdmin(email: string): Promise<ActionResult> {
   const parsed = emailSchema.safeParse(email);
   if (!parsed.success) return { ok: false, error: firstIssue(parsed.error) };
   if (!(await requireAdmin())) return denied;
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return unconfigured;
+  if (!process.env.SUPABASE_SECRET_KEY) return unconfigured;
 
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.createUser({
@@ -60,7 +60,7 @@ export async function resetAdminPassword(userId: string): Promise<ActionResult> 
   const me = await requireAdmin();
   if (!me) return denied;
   if (id.data === me.id) return { ok: false, error: "Use Change password for your own account." };
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return unconfigured;
+  if (!process.env.SUPABASE_SECRET_KEY) return unconfigured;
 
   const admin = createAdminClient();
   // Only staff accounts can be reset here, never arbitrary (player) users.
@@ -88,7 +88,7 @@ async function changeMyPassword(password: string): Promise<ActionResult> {
   const { error } = await supabase.auth.updateUser({ password: parsed.data });
   if (error) return { ok: false, error: error.message };
 
-  if (user.user.app_metadata?.must_change_password && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (user.user.app_metadata?.must_change_password && process.env.SUPABASE_SECRET_KEY) {
     await createAdminClient().auth.admin.updateUserById(user.user.id, {
       app_metadata: { ...user.user.app_metadata, must_change_password: false },
     });
