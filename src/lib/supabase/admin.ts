@@ -4,8 +4,9 @@ import { env } from "@/lib/env";
 import type { Database } from "./database.types";
 
 /**
- * Admin client (secret key): bypasses RLS and can manage auth users. Server Actions only, and only
- * after the caller has been verified as an ADMIN. The key must never be NEXT_PUBLIC_*.
+ * Admin client (secret key): bypasses RLS and runs as the `service_role`, which is how staff-only
+ * database functions recognize a privileged caller. Only use after `hasStaffSession()` has verified
+ * the caller. The key must never be NEXT_PUBLIC_*.
  */
 export function createAdminClient() {
   const key = process.env.SUPABASE_SECRET_KEY;

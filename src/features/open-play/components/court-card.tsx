@@ -10,6 +10,7 @@ import { PlayerSlot } from "./player-slot";
 type Props = {
   court: Court;
   me: Snapshot["me"];
+  isStaff: boolean;
   now: number;
   durationSeconds: number;
   autoStart: boolean;
@@ -33,6 +34,7 @@ type ChipTone = keyof typeof CHIP;
 export function CourtCard({
   court,
   me,
+  isStaff,
   now,
   durationSeconds,
   autoStart,
@@ -46,7 +48,6 @@ export function CourtCard({
 }: Props) {
   const round = court.round;
   const players = round?.players ?? [];
-  const isStaff = me.role !== null;
   const mine = round !== null && me.round_id === round.id;
   const running = round?.status === "ACTIVE" && round.ends_at ? round : null; // a game with a clock
   const active = running !== null;

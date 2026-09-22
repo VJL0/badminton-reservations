@@ -19,15 +19,15 @@ shared queue that feeds every court. Not a reservation system — a state machin
   When nothing is live, `/` waits and opens the queue by itself the moment a session starts; an ended board has a **Back to home** button.
 - **One FIFO queue.** Joining always enqueues first; the allocator then places players. A player can pick a specific court
   (they only take that one) and can switch while queued without losing their place.
-- **Courts have formats** (1v1, 2v2, 1v2 ... up to 4 a side) and admins can add, delete or reformat them during a session.
+- **Courts have formats** (1v1, 2v2, 1v2 ... up to 4 a side) and staff can add, delete or reformat them during a session.
   Otherwise courts are packed: partially filled first, then fullest, then lowest number.
-- **Games start** when the court is full: immediately, after a countdown, or when someone on the court (or an officer) presses
+- **Games start** when the court is full: immediately, after a countdown, or when someone on the court (or staff) presses
   Start, per session setting. Two players are enough to start early.
 - **Games end by themselves** when time is up (session setting, on by default) and the next players step on. Otherwise a player
-  or officer presses **End game**. Double presses are a no-op.
+  or staff presses **End game**. Double presses are a no-op.
 - **Pause / Play** stops and restarts a running game's clock. Leaving a running game lets it carry on without you.
 - Finished players go idle; `auto_requeue_on_finish` sends them back to the queue for the same court instead.
-- **Officers** remove players and pause games; **admins** also start/end sessions, change settings and courts, and manage admins.
+- **Staff** (one shared access code, no individual accounts) start/end sessions, change settings and courts, remove players and pause games.
 - **Session summary** (`/admin/sessions/<id>`): waits, fairness flags, court use, per-player breakdowns, game history, CSV export.
   Every wait is recorded by a trigger (`queue_entries`); nothing calculated is stored.
 - Abuse limits: queue capped per session (`max_queue_size`, default 100); 2 s join throttle.
@@ -41,23 +41,21 @@ cp .env.example .env.local     # URL + publishable key from `pnpm supabase statu
 pnpm dev                       # use http://127.0.0.1:3000 (matches Supabase's local site URL)
 ```
 
-### Officer accounts
+### Staff access
 
-Officers sign in at `/admin/login` with email + password. There is no in-app sign-up.
+Staff sign in at `/admin/login` with one shared code — no individual accounts, no email/password,
+no roles. Everyone who has the code has the same permissions.
 
-1. Create the user: Supabase Dashboard (or local Studio, http://127.0.0.1:54323) → Authentication →
-   Users → Add user, with **Auto Confirm User** ticked.
-2. Grant access in the SQL editor (`ADMIN` can create/end sessions; `OPERATOR` can only run games):
+1. Pick a code.
+2. `node scripts/hash-staff-code.mjs "<code>"` and put the output in `STAFF_ACCESS_CODE_HASH` (see
+   `.env.example`). The plaintext code is never stored anywhere, including in this repo.
+3. Set `STAFF_SESSION_SECRET` to a long random value (e.g. `openssl rand -hex 32`) — it signs the
+   staff session cookie.
+4. `SUPABASE_SECRET_KEY` is required too: staff-privileged actions run as the database's
+   `service_role`, since there's no longer a Supabase-auth identity for the database to check.
 
-```sql
-insert into public.staff (user_id, role)
-select id, 'ADMIN' from auth.users where email = 'you@example.com';
-```
-
-Once one admin exists, more can be added from the **Admins** section of `/admin` (email only; the
-password starts as the shared default and the new admin is made to change it). This needs the
-server-only `SUPABASE_SECRET_KEY` (see `.env.example`); set it in Vercel too, **without** the
-`NEXT_PUBLIC_` prefix. Admins can also reset another admin's password to the default there.
+Set all three in Vercel as well, **without** the `NEXT_PUBLIC_` prefix. Share the code with staff
+directly (not through this repo); rotating it is just hashing a new one and redeploying.
 
 ## Scripts
 
@@ -90,11 +88,9 @@ Dashboard settings — these are not in the migrations:
 
 | Where | Setting |
 | --- | --- |
-| Auth → Sign In / Providers | **Anonymous sign-ins: on.** Email stays on (officer login). |
+| Auth → Sign In / Providers | **Anonymous sign-ins: on** (players only — staff sign-in doesn't use Supabase Auth at all). |
 | Auth → Attack Protection | **CAPTCHA on**, provider Turnstile, paste the Turnstile **secret**. |
 | Auth → Rate Limits | **Anonymous sign-ins per hour per IP → 300+.** Default 30; a gym shares one public IP. |
-| Auth → Providers → Email | Confirm email **on**; minimum password length 10, require letters + digits. |
-| Auth → SMTP | Your own SMTP provider (built-in mailer allows ~2 emails/hour). |
 | Auth → URL Configuration | Site URL = your production domain. |
 | Auth → JWT Keys | Use asymmetric signing keys (default on new projects) so `getClaims()` verifies locally. |
 | Realtime → Settings | **Disable "Allow public access"** so only authorized private channels connect. |
@@ -129,7 +125,7 @@ if the first two are missing. Never expose the secret key.
 Skipped by default; the app works without it, and the sound/vibration alert on the page still works.
 
 1. `npx web-push generate-vapid-keys`. Set `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`
-   and a long random `PUSH_WEBHOOK_SECRET` in Vercel (plus `SUPABASE_SECRET_KEY`, already needed for admins). Redeploy.
+   and a long random `PUSH_WEBHOOK_SECRET` in Vercel (`SUPABASE_SECRET_KEY` is already required — see Staff access above). Redeploy.
 2. Tell the database where to call, in the Supabase SQL editor (same secret as above):
    ```sql
    select vault.create_secret('https://<your-domain>/api/push', 'push_url');
@@ -137,9 +133,9 @@ Skipped by default; the app works without it, and the sound/vibration alert on t
    ```
 3. iPhones only allow web push for an app added to the Home Screen (iOS 16.4+): Share, then Add to Home Screen.
 
-### 4. First officer, then smoke test
+### 4. First smoke test
 
-Create the officer (see above), sign in at `/admin/login`, start a session, print the QR (it stays valid for every future session).
+Set up staff access (see above), sign in at `/admin/login`, start a session, print the QR (it stays valid for every future session).
 Then on two phones: enter a name, join, let the game run out (or press End game), rejoin.
 
 ### Housekeeping
@@ -157,7 +153,9 @@ where is_anonymous is true and created_at < now() - interval '30 days';
   functions in `supabase/migrations` (start with `…0002_queue_functions.sql`). New SQL functions get
   `EXECUTE` for `anon`/`authenticated` by default in Supabase: revoke and grant explicitly, as in
   `20260918000003_rls_grants.sql`.
-- Anonymous sign-in and officer sign-in run **in the browser**, not in Server Actions, so Supabase's
-  per-IP rate limits count each person rather than Vercel's shared egress IP.
+- Anonymous (player) sign-in runs **in the browser**, not in Server Actions, so Supabase's per-IP
+  rate limits count each person rather than Vercel's shared egress IP. Staff sign-in doesn't use
+  Supabase Auth: the shared code is checked in a Server Action, throttled by a best-effort in-memory
+  per-IP limiter (`src/lib/rate-limit.ts`) since there's no per-account rate limit to lean on.
 - A strict nonce-based CSP is set per request in `src/proxy.ts` (`src/lib/csp.ts`); other security
   headers are in `next.config.ts`. Adding a new third-party origin means adding it to the CSP.

@@ -389,24 +389,6 @@ export type Database = {
           },
         ]
       }
-      staff: {
-        Row: {
-          created_at: string
-          role: Database["public"]["Enums"]["staff_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          role: Database["public"]["Enums"]["staff_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          role?: Database["public"]["Enums"]["staff_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -454,12 +436,8 @@ export type Database = {
         Args: { p_player_id: string; p_requeue: boolean; p_round_id: string }
         Returns: undefined
       }
-      _require_staff: { Args: { p_admin_only?: boolean }; Returns: undefined }
+      _require_service_role: { Args: never; Returns: undefined }
       _require_user: { Args: never; Returns: string }
-      _staff_role: {
-        Args: never
-        Returns: Database["public"]["Enums"]["staff_role"]
-      }
       _start_round: { Args: { p_round_id: string }; Returns: undefined }
       _sync_round: { Args: { p_round_id: string }; Returns: undefined }
       add_court: {
@@ -493,7 +471,6 @@ export type Database = {
       }
       leave_queue: { Args: { p_session_id: string }; Returns: undefined }
       list_sessions: { Args: never; Returns: Json }
-      list_staff: { Args: never; Returns: Json }
       pause_round: { Args: { p_round_id: string }; Returns: undefined }
       remove_player: {
         Args: { p_player_id: string; p_session_id: string }
@@ -527,7 +504,6 @@ export type Database = {
       queue_outcome: "ASSIGNED" | "LEFT" | "REMOVED" | "SESSION_ENDED"
       round_status: "FILLING" | "ACTIVE" | "COMPLETED" | "CANCELLED"
       session_status: "ACTIVE" | "ENDED"
-      staff_role: "ADMIN" | "OPERATOR"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -662,7 +638,6 @@ export const Constants = {
       queue_outcome: ["ASSIGNED", "LEFT", "REMOVED", "SESSION_ENDED"],
       round_status: ["FILLING", "ACTIVE", "COMPLETED", "CANCELLED"],
       session_status: ["ACTIVE", "ENDED"],
-      staff_role: ["ADMIN", "OPERATOR"],
     },
   },
 } as const

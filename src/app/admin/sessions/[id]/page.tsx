@@ -8,7 +8,8 @@ import { idSchema } from "@/features/open-play/schemas";
 import { headingClass, metaClass } from "@/features/open-play/styles";
 import { formatDuration, formatPercent } from "@/lib/format";
 import { loginUrl } from "@/lib/redirects";
-import { createClient } from "@/lib/supabase/server";
+import { requireStaffSession } from "@/lib/staff-session";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { PlayersList } from "./players-list";
 import type { Summary } from "./summary-types";
 
@@ -37,17 +38,12 @@ export default async function SessionSummaryPage({ params }: PageProps<"/admin/s
   const id = idSchema.safeParse((await params).id);
   if (!id.success) redirect("/admin"); // not a session id: the list is the right page
 
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims) redirect(loginUrl(`/admin/sessions/${id.data}`)); // sign in, then come straight back
+  await requireStaffSession(loginUrl(`/admin/sessions/${id.data}`)); // sign in, then come straight back
 
-  const { data, error } = await supabase.rpc("get_session_summary", {
+  const { data, error } = await createAdminClient().rpc("get_session_summary", {
     p_session_id: id.data,
   });
-  if (error) {
-    if (error.message === "not_staff") redirect("/admin");
-    throw new Error(`get_session_summary failed: ${error.message}`);
-  }
+  if (error) throw new Error(`get_session_summary failed: ${error.message}`);
   if (!data) redirect("/admin"); // no such session (deleted or mistyped)
   const { session, totals, court_use, courts, players, games } = data as Summary;
 

@@ -1,5 +1,5 @@
 begin;
-select plan(118);
+select plan(117);
 
 create schema tests;
 -- Run SQL as an authenticated user, then hand the role back (so pgTAP itself
@@ -8,6 +8,15 @@ create function tests.call(p_uid uuid, p_sql text) returns void language plpgsql
 begin
   perform set_config('request.jwt.claims', json_build_object('sub', p_uid, 'role', 'authenticated')::text, true);
   perform set_config('role', 'authenticated', true);
+  execute p_sql;
+  perform set_config('role', 'postgres', true);
+end $$;
+-- Run SQL as the service role: this is how staff-only and staff-or-self functions recognize a
+-- privileged caller now (see 20260922000001_staff_code_auth.sql) — no user, no JWT `sub`, just the role.
+create function tests.staff(p_sql text) returns void language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+  perform set_config('role', 'service_role', true);
   execute p_sql;
   perform set_config('role', 'postgres', true);
 end $$;
@@ -29,22 +38,18 @@ create function tests.uid(n int) returns uuid language sql immutable as $$
 create function tests.end_live() returns void language sql as $$
   update public.open_play_sessions set status = 'ENDED', ended_at = now() where status = 'ACTIVE' $$;
 
--- 24 players (1..24), admin (100), operator (101)
+-- 24 players. There's no staff account any more: staff is the service role, not a user.
 insert into auth.users (id) select tests.uid(n) from generate_series(1, 24) n;
-insert into auth.users (id) values (tests.uid(100)), (tests.uid(101));
-insert into public.staff (user_id, role) values (tests.uid(100), 'ADMIN'), (tests.uid(101), 'OPERATOR');
 
 select tests.call(tests.uid(n), format('select public.set_display_name(%L)', 'P' || n)) from generate_series(1, 24) n;
-select tests.call(tests.uid(100), $$select public.set_display_name('Admin')$$);
 
 -- ---------- RLS / grants
 select throws_ok($$ select tests.call(tests.uid(1), 'select * from public.session_players') $$, '42501', null, 'players cannot read tables directly');
 select throws_ok($$ select tests.call(tests.uid(1), 'select public._allocate(gen_random_uuid())') $$, '42501', null, 'internal allocator not callable');
-select throws_ok($$ select tests.call(tests.uid(1), $q$select public.create_session('x')$q$) $$, 'not_staff', 'players cannot create sessions');
-select throws_ok($$ select tests.call(tests.uid(101), $q$select public.create_session('x')$q$) $$, 'not_staff', 'operators cannot create sessions');
+select throws_ok($$ select tests.call(tests.uid(1), $q$select public.create_session('x')$q$) $$, '42501', null, 'players cannot create sessions');
 
 -- ---------- session setup
-select tests.call(tests.uid(100), $$select public.create_session('Friday', 3, 1200, 'FRIDAY')$$);
+select tests.staff($$select public.create_session('Friday', 3, 1200, 'FRIDAY')$$);
 create temp table t_s as select id from public.open_play_sessions where code = 'FRIDAY';
 select is((select count(*)::int from public.courts where session_id = (select id from t_s)), 3, 'three courts created');
 
@@ -84,8 +89,8 @@ create temp table t_c2 as
    where c.session_id = (select id from t_s) and c.court_number = 2 and r.status = 'ACTIVE';
 select throws_ok(format('select tests.call(tests.uid(24), %L)', format('select public.finish_round(%L)', (select id from t_c2))),
   'not_allowed', 'outsider cannot end a game');
-select tests.call(tests.uid(101), format('select public.finish_round(%L)', (select id from t_c2)));
-select tests.call(tests.uid(101), format('select public.finish_round(%L)', (select id from t_c2)));  -- second press: no-op
+select tests.staff(format('select public.finish_round(%L)', (select id from t_c2)));
+select tests.staff(format('select public.finish_round(%L)', (select id from t_c2)));  -- second press: no-op
 select is((select count(*)::int from public.rounds r join public.courts c on c.id = r.court_id
             where c.court_number = 2 and c.session_id = (select id from t_s) and r.status = 'ACTIVE'), 1,
           'exactly one replacement round despite double end');
@@ -109,23 +114,23 @@ select is((select state::text from public.session_players where player_id = test
 
 -- ---------- deleting a court
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Delete', 2, 600, 'DELETE')$$);
+select tests.staff($$select public.create_session('Delete', 2, 600, 'DELETE')$$);
 create temp table t_p as select id from public.open_play_sessions where code = 'DELETE';
 create temp table t_pc as select id, court_number from public.courts where session_id = (select id from t_p);
 select throws_ok(format('select tests.call(tests.uid(1), %L)', format('select public.delete_court(%L)', (select id from t_pc where court_number = 1))),
-  'not_staff', 'players cannot delete courts');
+  '42501', null, 'players cannot delete courts');
 select tests.join(tests.uid(21), (select id from t_p));
-select tests.call(tests.uid(100), format('select public.delete_court(%L)', (select id from t_pc where court_number = 1)));
+select tests.staff(format('select public.delete_court(%L)', (select id from t_pc where court_number = 1)));
 select is((select c.court_number from public.round_players rp join public.rounds r on r.id = rp.round_id
             join public.courts c on c.id = r.court_id where rp.left_at is null and r.session_id = (select id from t_p)), 2,
           'deleting a filling court moves its players to another court');
 select is(jsonb_array_length(tests.snapshot(tests.uid(21), 'DELETE') -> 'courts'), 1, 'a deleted court leaves the board');
-select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.delete_court(%L)', (select id from t_pc where court_number = 2))),
+select throws_ok(format('select tests.staff(%L)', format('select public.delete_court(%L)', (select id from t_pc where court_number = 2))),
   'last_court', 'the last court cannot be deleted');
-select tests.call(tests.uid(100), format('select public.add_court(%L)', (select id from t_p)));
+select tests.staff(format('select public.add_court(%L)', (select id from t_p)));
 select is((select max(court_number)::int from public.courts where session_id = (select id from t_p)), 3, 'new courts never reuse a deleted number');
 select tests.join(tests.uid(n), (select id from t_p)) from generate_series(22, 24) n;
-select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.delete_court(%L)', (select id from t_pc where court_number = 2))),
+select throws_ok(format('select tests.staff(%L)', format('select public.delete_court(%L)', (select id from t_pc where court_number = 2))),
   'game_in_progress', 'cannot delete a court with a game running');
 
 -- ---------- constraints
@@ -135,7 +140,7 @@ select throws_ok($$ insert into public.rounds (session_id, court_id)
 
 -- ---------- abuse limits
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Cap', 1, 600, 'CAPS')$$);
+select tests.staff($$select public.create_session('Cap', 1, 600, 'CAPS')$$);
 create temp table t_k as select id from public.open_play_sessions where code = 'CAPS';
 update public.open_play_sessions set max_queue_size = 1 where id = (select id from t_k);
 select tests.join(tests.uid(n), (select id from t_k)) from generate_series(1, 5) n;
@@ -146,12 +151,12 @@ select tests.call(tests.uid(5), format('select public.leave_queue(%L)', (select 
 select is((select state::text from public.session_players where player_id = tests.uid(5) and session_id = (select id from t_k)), 'IDLE',
           'a waiting player can leave');
 select throws_ok(format('select tests.join(tests.uid(5), %L)', (select id from t_k)), 'too_fast', 'instant leave/join churn is throttled');
-select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 9,
+select is((select count(*)::int from pg_policies where schemaname = 'public' and policyname = 'no direct client access'), 8,
           'every table has an explicit deny policy');
 
 -- ---------- choosing a court (queue for a specific court)
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Pick', 3, 600, 'PICK')$$);
+select tests.staff($$select public.create_session('Pick', 3, 600, 'PICK')$$);
 create temp table t_pk as select id from public.open_play_sessions where code = 'PICK';
 create temp table t_pkc as select id, court_number from public.courts where session_id = (select id from t_pk);
 create function tests.pick(p_uid uuid, p_session uuid, p_court uuid) returns void language sql as $$
@@ -181,7 +186,7 @@ select is((select state::text from public.session_players where player_id = test
 select throws_ok(format('select tests.pick(tests.uid(7), %L, gen_random_uuid())', (select id from t_pk)),
   'court_not_found', 'unknown court');
 -- finishing the game on court 3 seats the waiting picker on the same court
-select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select r.id from public.rounds r join public.courts c on c.id = r.court_id
+select tests.staff(format('select public.finish_round(%L)', (select r.id from public.rounds r join public.courts c on c.id = r.court_id
    where c.court_number = 3 and c.session_id = (select id from t_pk) and r.status = 'ACTIVE')));
 select is((select c.court_number from public.round_players rp join public.rounds r on r.id = rp.round_id
             join public.courts c on c.id = r.court_id where rp.player_id = tests.uid(5) and rp.left_at is null and r.session_id = (select id from t_pk)), 3,
@@ -189,18 +194,18 @@ select is((select c.court_number from public.round_players rp join public.rounds
 
 -- ---------- pausing freezes a running game
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Freeze', 1, 600, 'FREEZE')$$);
+select tests.staff($$select public.create_session('Freeze', 1, 600, 'FREEZE')$$);
 create temp table t_fz as select id from public.open_play_sessions where code = 'FREEZE';
 
 select tests.join(tests.uid(n), (select id from t_fz)) from generate_series(1, 4) n;
 update public.rounds set ends_at = now() + interval '5 minutes' where session_id = (select id from t_fz) and status = 'ACTIVE';
-select tests.call(tests.uid(100), format('select public.pause_round(%L)', (select id from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE')));
+select tests.staff(format('select public.pause_round(%L)', (select id from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE')));
 select ok((select paused_at is not null from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE'),
           'pausing a game stops its clock');
 select is((select status::text from public.rounds where session_id = (select id from t_fz) and ended_at is null), 'ACTIVE',
           'the paused game is still on court');
 update public.rounds set paused_at = now() - interval '2 minutes', ends_at = now() + interval '5 minutes' where session_id = (select id from t_fz) and status = 'ACTIVE';
-select tests.call(tests.uid(100), format('select public.resume_round(%L)', (select id from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE')));
+select tests.staff(format('select public.resume_round(%L)', (select id from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE')));
 select ok((select ends_at > now() + interval '6 minutes 50 seconds' and paused_at is null from public.rounds where session_id = (select id from t_fz) and status = 'ACTIVE'),
           'resuming hands back the paused time');
 
@@ -219,12 +224,12 @@ select is((select count(*)::int from public.rounds where session_id = (select id
 
 -- ---------- auto re-queue lines players up for the same court
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Again', 2, 600, 'AGAIN', true)$$);
+select tests.staff($$select public.create_session('Again', 2, 600, 'AGAIN', true)$$);
 create temp table t_ag as select id from public.open_play_sessions where code = 'AGAIN';
 create temp table t_agc as select id, court_number from public.courts where session_id = (select id from t_ag);
 select tests.pick(tests.uid(n), (select id from t_ag), (select id from t_agc where court_number = 2)) from generate_series(1, 4) n;
 select tests.join(tests.uid(n), (select id from t_ag)) from generate_series(5, 8) n;  -- court 1
-select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select r.id from public.rounds r
+select tests.staff(format('select public.finish_round(%L)', (select r.id from public.rounds r
    where r.court_id = (select id from t_agc where court_number = 2) and r.status = 'ACTIVE')));
 select is((select c.court_number from public.round_players rp join public.rounds r on r.id = rp.round_id
             join public.courts c on c.id = r.court_id where rp.player_id = tests.uid(1) and rp.left_at is null and r.session_id = (select id from t_ag)), 2,
@@ -232,24 +237,24 @@ select is((select c.court_number from public.round_players rp join public.rounds
 
 -- ---------- court formats
 select throws_ok(format('select tests.call(tests.uid(1), %L)', format('select public.add_court(%L)', (select id from t_ag))),
-  'not_staff', 'players cannot add courts');
-select tests.call(tests.uid(100), format('select public.add_court(%L, 1, 1)', (select id from t_ag)));
+  '42501', null, 'players cannot add courts');
+select tests.staff(format('select public.add_court(%L, 1, 1)', (select id from t_ag)));
 select is((select capacity::int from public.courts where session_id = (select id from t_ag) and court_number = 3), 2, 'a 1v1 court holds two');
-select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.add_court(%L, 0, 2)', (select id from t_ag))),
+select throws_ok(format('select tests.staff(%L)', format('select public.add_court(%L, 0, 2)', (select id from t_ag))),
   'invalid_court_format', 'a side needs at least one player');
 select tests.join(tests.uid(9), (select id from t_ag));
 select tests.join(tests.uid(10), (select id from t_ag));
 select ok((select ends_at is not null from public.rounds r join public.courts c on c.id = r.court_id
             where c.session_id = (select id from t_ag) and c.court_number = 3 and r.status = 'ACTIVE'),
           'a 1v1 game starts when two players are on it');
-select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.update_court(%L, 2, 2)', (select id from t_agc where court_number = 1))),
+select throws_ok(format('select tests.staff(%L)', format('select public.update_court(%L, 2, 2)', (select id from t_agc where court_number = 1))),
   'game_in_progress', 'cannot reformat a court mid-game');
 
 -- ---------- manual start and countdown
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Manual', 1, 600, 'MANUAL')$$);
+select tests.staff($$select public.create_session('Manual', 1, 600, 'MANUAL')$$);
 create temp table t_mn as select id from public.open_play_sessions where code = 'MANUAL';
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, false, 0, true)', (select id from t_mn)));
+select tests.staff(format('select public.update_session_settings(%L, 600, false, false, 0, true)', (select id from t_mn)));
 select tests.join(tests.uid(n), (select id from t_mn)) from generate_series(1, 4) n;
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'FILLING',
           'with auto-start off a full court waits');
@@ -257,8 +262,8 @@ select throws_ok(format('select tests.call(tests.uid(20), %L)', format('select p
   'not_allowed', 'an outsider cannot start a game');
 select tests.call(tests.uid(1), format('select public.start_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and ended_at is null)));
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'ACTIVE', 'a player on court starts it');
-select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and status = 'ACTIVE')));
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 30, true)', (select id from t_mn)));
+select tests.staff(format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and status = 'ACTIVE')));
+select tests.staff(format('select public.update_session_settings(%L, 600, false, true, 30, true)', (select id from t_mn)));
 select tests.join(tests.uid(n), (select id from t_mn)) from generate_series(5, 8) n;
 select ok((select start_at > now() + interval '25 seconds' and status = 'FILLING' from public.rounds where session_id = (select id from t_mn) and ended_at is null),
           'a full court counts down before it starts');
@@ -267,31 +272,31 @@ select throws_ok(format('select tests.call(tests.uid(20), %L)', format('select p
 update public.rounds set start_at = now() - interval '1 second' where session_id = (select id from t_mn) and ended_at is null;
 select tests.call(tests.uid(20), format('select public.start_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and ended_at is null)));
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'ACTIVE', 'anyone may report the countdown finished');
-select throws_ok(format('select tests.call(tests.uid(100), %L)', format('select public.update_session_settings(%L, 30, false, true, 0, true)', (select id from t_mn))),
+select throws_ok(format('select tests.staff(%L)', format('select public.update_session_settings(%L, 30, false, true, 0, true)', (select id from t_mn))),
   'invalid_duration', 'durations are bounded');
-select throws_ok(format('select tests.call(tests.uid(101), %L)', format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_mn))),
-  'not_staff', 'only admins change settings');
+select throws_ok(format('select tests.call(tests.uid(1), %L)', format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_mn))),
+  '42501', null, 'non-staff cannot change settings');
 
 -- ---------- reformatting a court that is still filling
-select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and status = 'ACTIVE')));
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, false, 0, true)', (select id from t_mn)));
+select tests.staff(format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_mn) and status = 'ACTIVE')));
+select tests.staff(format('select public.update_session_settings(%L, 600, false, false, 0, true)', (select id from t_mn)));
 select tests.join(tests.uid(n), (select id from t_mn)) from generate_series(11, 13) n;
 create temp table t_mnc as select id from public.courts where session_id = (select id from t_mn);
-select tests.call(tests.uid(100), format('select public.update_court(%L, 1, 1)', (select id from t_mnc)));
+select tests.staff(format('select public.update_court(%L, 1, 1)', (select id from t_mnc)));
 select is((select capacity::int from public.courts where id = (select id from t_mnc)), 2, 'a filling court can become 1v1');
 select is((select state::text from public.session_players where player_id = tests.uid(13) and session_id = (select id from t_mn)), 'QUEUED',
           'the player who no longer fits goes back to the queue');
-select tests.call(tests.uid(100), format('select public.update_court(%L, 2, 2)', (select id from t_mnc)));
+select tests.staff(format('select public.update_court(%L, 2, 2)', (select id from t_mnc)));
 select is((select state::text from public.session_players where player_id = tests.uid(13) and session_id = (select id from t_mn)), 'PLAYING',
           'growing the court seats the waiting player again');
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_mn)));
+select tests.staff(format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_mn)));
 select tests.join(tests.uid(14), (select id from t_mn));
 select is((select status::text from public.rounds where session_id = (select id from t_mn) and ended_at is null), 'ACTIVE',
           'with auto-start back on, the 4th arrival starts the game');
 
 -- ---------- queue history is recorded by the database
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Track', 1, 600, 'TRACK')$$);
+select tests.staff($$select public.create_session('Track', 1, 600, 'TRACK')$$);
 create temp table t_tr as select id from public.open_play_sessions where code = 'TRACK';
 select tests.join(tests.uid(n), (select id from t_tr)) from generate_series(1, 4) n;
 select is((select count(*)::int from public.queue_entries where session_id = (select id from t_tr) and outcome = 'ASSIGNED'), 4,
@@ -303,24 +308,24 @@ select is((select outcome::text from public.queue_entries where session_id = (se
 update public.session_players set updated_at = now() - interval '1 minute' where session_id = (select id from t_tr);
 select tests.join(tests.uid(5), (select id from t_tr));
 select tests.join(tests.uid(6), (select id from t_tr));
-select tests.call(tests.uid(100), format('select public.remove_player(%L, %L)', (select id from t_tr), tests.uid(6)));
+select tests.staff(format('select public.remove_player(%L, %L)', (select id from t_tr), tests.uid(6)));
 select is((select outcome::text from public.queue_entries where session_id = (select id from t_tr) and player_id = tests.uid(6)), 'REMOVED',
           'an officer removing someone is recorded as REMOVED');
-select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_tr) and status = 'ACTIVE')));
+select tests.staff(format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_tr) and status = 'ACTIVE')));
 select ok((select outcome = 'ASSIGNED' and round_id is not null from public.queue_entries
             where session_id = (select id from t_tr) and player_id = tests.uid(5) and outcome = 'ASSIGNED'),
           'getting a court is recorded with the game');
 update public.session_players set updated_at = now() - interval '1 minute' where session_id = (select id from t_tr);
 select tests.join(tests.uid(n), (select id from t_tr)) from generate_series(8, 10) n;  -- fill the court so the next player must wait
 select tests.join(tests.uid(7), (select id from t_tr));
-select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_tr)));
+select tests.staff(format('select public.end_session(%L)', (select id from t_tr)));
 select is((select outcome::text from public.queue_entries where session_id = (select id from t_tr) and player_id = tests.uid(7)), 'SESSION_ENDED',
           'still waiting when the session ends is recorded as SESSION_ENDED');
 select is((select count(*)::int from public.queue_entries where session_id = (select id from t_tr) and ended_at is null), 0, 'no wait is left open after the session ends');
 
 -- ---------- session summary numbers (hand-built timeline so every figure is checkable)
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Summary', 1, 1200, 'SUMM')$$);
+select tests.staff($$select public.create_session('Summary', 1, 1200, 'SUMM')$$);
 create temp table t_su as select id from public.open_play_sessions where code = 'SUMM';
 update public.open_play_sessions set started_at = '2026-01-01 20:00+00', ended_at = '2026-01-01 22:00+00', status = 'ENDED'
  where id = (select id from t_su);
@@ -350,15 +355,15 @@ insert into public.queue_entries (session_id, player_id, queued_at, ended_at, ou
 create function tests.summary(p_sql text) returns jsonb language plpgsql as $$
 declare v jsonb;
 begin
-  perform set_config('request.jwt.claims', json_build_object('sub', tests.uid(100), 'role', 'authenticated')::text, true);
-  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+  perform set_config('role', 'service_role', true);
   execute p_sql into v;
   perform set_config('role', 'postgres', true);
   return v;
 end $$;
 create temp table t_sum as select tests.summary(format('select public.get_session_summary(%L)', (select id from t_su))) as j;
 select throws_ok(format('select tests.call(tests.uid(1), %L)', format('select public.get_session_summary(%L)', (select id from t_su))),
-  'not_staff', 'players cannot open a summary');
+  '42501', null, 'players cannot open a summary');
 select is((select (j -> 'totals' ->> 'players')::int from t_sum), 7, 'summary counts every player who joined');
 select is((select (j -> 'totals' ->> 'games')::int from t_sum), 2, 'summary counts started games');
 select is((select (j -> 'totals' ->> 'median_wait_s')::int from t_sum), 300, 'median wait is the typical wait, not thrown off by one long one');
@@ -379,7 +384,7 @@ select is((select (j -> 'court_use' ->> 'idle_backed_s')::int from t_sum), 300, 
 delete from vault.secrets where name in ('push_url', 'push_secret');  -- a dev database may already be configured; this rolls back
 select vault.create_secret('http://localhost:3000/api/push', 'push_url'), vault.create_secret('s3cret', 'push_secret');
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Push', 1, 600, 'PUSHIT')$$);
+select tests.staff($$select public.create_session('Push', 1, 600, 'PUSHIT')$$);
 create temp table t_ps as select id from public.open_play_sessions where code = 'PUSHIT';
 select throws_ok(format('select tests.call(tests.uid(1), %L)', $$select public.save_push_subscription('http://insecure.example/x', 'k', 'a')$$),
   'invalid_subscription', 'only https push endpoints are stored');
@@ -390,7 +395,7 @@ select tests.join(tests.uid(n), (select id from t_ps)) from generate_series(5, 8
 create temp table t_q0 as select count(*)::int n from net.http_request_queue;
 select tests.join(tests.uid(1), (select id from t_ps));
 select is((select count(*)::int from net.http_request_queue) - (select n from t_q0), 0, 'you are not notified about your own action');
-select tests.call(tests.uid(100), format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_ps) and status = 'ACTIVE')));
+select tests.staff(format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_ps) and status = 'ACTIVE')));
 select is((select count(*)::int from net.http_request_queue) - (select n from t_q0), 1, 'a player seated by someone else is pushed');
 select ok((select bool_and(convert_from(body, 'utf8')::jsonb ->> 'title' = 'You''re on court 1' and headers ->> 'x-push-secret' = 's3cret')
              from net.http_request_queue where id > (select max(id) - 1 from net.http_request_queue)),
@@ -406,7 +411,7 @@ select ok(exists (select 1 from net.http_request_queue
 
 -- ---------- games end by themselves
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Auto end', 1, 600, 'AUTOFIN')$$);
+select tests.staff($$select public.create_session('Auto end', 1, 600, 'AUTOFIN')$$);
 create temp table t_af as select id from public.open_play_sessions where code = 'AUTOFIN';
 select tests.join(tests.uid(n), (select id from t_af)) from generate_series(1, 8) n;   -- 4 playing, 4 waiting
 select throws_ok(format('select tests.call(tests.uid(20), %L)', format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'))),
@@ -427,17 +432,17 @@ select is(public._finish_overdue_rounds(), 1, 'the timer ends a game that is pas
 select is((select count(*)::int from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'), 0, 'and nobody is left to start another');
 -- turning it off
 select tests.join(tests.uid(n), (select id from t_af)) from generate_series(9, 12) n;
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 0, false)', (select id from t_af)));
+select tests.staff(format('select public.update_session_settings(%L, 600, false, true, 0, false)', (select id from t_af)));
 update public.rounds set ends_at = now() - interval '1 second' where session_id = (select id from t_af) and status = 'ACTIVE';
 select is(public._finish_overdue_rounds(), 0, 'with automatic ending off the timer leaves games alone');
 select throws_ok(format('select tests.call(tests.uid(20), %L)', format('select public.finish_round(%L)', (select id from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'))),
   'not_allowed', 'and outsiders cannot end it');
-select tests.call(tests.uid(100), format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_af)));
+select tests.staff(format('select public.update_session_settings(%L, 600, false, true, 0, true)', (select id from t_af)));
 select is((select count(*)::int from public.rounds where session_id = (select id from t_af) and status = 'ACTIVE'), 0,
           'turning it on ends games that are already past their time');
 
 -- ---------- ending a session
-select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_s)));
+select tests.staff(format('select public.end_session(%L)', (select id from t_s)));
 select is((select count(*)::int from public.session_players where session_id = (select id from t_s) and state <> 'IDLE'), 0, 'ending a session idles everyone');
 select throws_ok(format('select tests.join(tests.uid(1), %L)', (select id from t_s)), 'session_ended', 'cannot join an ended session');
 select ok((select count(*) from realtime.messages where event = 'session_changed' and topic = 'session:' || (select id from t_s)::text) > 0,
@@ -446,32 +451,32 @@ select ok((select count(*) from realtime.messages where event = 'session_changed
 -- ---------- deleting a session
 create temp table t_del as select id from public.open_play_sessions where code = 'FRIDAY';
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Doomed', 1, 1200, 'DOOMED')$$);
+select tests.staff($$select public.create_session('Doomed', 1, 1200, 'DOOMED')$$);
 create temp table t_doomed as select id from public.open_play_sessions where code = 'DOOMED';
-select throws_ok(format('select tests.call(tests.uid(100), $q$select public.delete_session(%L)$q$)', (select id from t_doomed)), 'session_active', 'a live session cannot be deleted');
-select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from t_doomed)));
-select throws_ok(format('select tests.call(tests.uid(101), $q$select public.delete_session(%L)$q$)', (select id from t_doomed)), 'not_staff', 'operators cannot delete sessions');
-select tests.call(tests.uid(100), format('select public.delete_session(%L)', (select id from t_doomed)));
+select throws_ok(format('select tests.staff($q$select public.delete_session(%L)$q$)', (select id from t_doomed)), 'session_active', 'a live session cannot be deleted');
+select tests.staff(format('select public.end_session(%L)', (select id from t_doomed)));
+select throws_ok(format('select tests.call(tests.uid(1), $q$select public.delete_session(%L)$q$)', (select id from t_doomed)), '42501', null, 'non-staff cannot delete sessions');
+select tests.staff(format('select public.delete_session(%L)', (select id from t_doomed)));
 select is((select count(*)::int from public.open_play_sessions where code = 'DOOMED'), 0, 'an ended session can be deleted');
 select is((select count(*)::int from public.courts where session_id = (select id from t_doomed)), 0, 'its courts go with it');
 
 -- ---------- one live session at a time
 select tests.end_live();
-select tests.call(tests.uid(100), $$select public.create_session('Live', 1, 600, 'LIVE1')$$);
-select throws_ok($$ select tests.call(tests.uid(100), $q$select public.create_session('Second', 1, 600, 'LIVE2')$q$) $$,
+select tests.staff($$select public.create_session('Live', 1, 600, 'LIVE1')$$);
+select throws_ok($$ select tests.staff($q$select public.create_session('Second', 1, 600, 'LIVE2')$q$) $$,
   'already_active', 'a second live session is refused');
 select is((select count(*)::int from public.open_play_sessions where status = 'ACTIVE'), 1, 'only one session is live');
 select is((select count(*)::int from public.open_play_sessions where code = 'LIVE2'), 0, 'the refused session leaves nothing behind');
 select throws_ok($$ insert into public.open_play_sessions (code, name) values ('LIVE3', 'Direct') $$,
   '23505', null, 'the DB refuses a second live session even without create_session');
 select is((select tests.snapshot(tests.uid(1), 'LIVE1') -> 'session' ->> 'code'), 'LIVE1', 'the live session is readable by players');
-select tests.call(tests.uid(100), format('select public.end_session(%L)', (select id from public.open_play_sessions where code = 'LIVE1')));
-select lives_ok($$ select tests.call(tests.uid(100), $q$select public.create_session('Next', 1, 600, 'LIVE2')$q$) $$,
+select tests.staff(format('select public.end_session(%L)', (select id from public.open_play_sessions where code = 'LIVE1')));
+select lives_ok($$ select tests.staff($q$select public.create_session('Next', 1, 600, 'LIVE2')$q$) $$,
   'a new session can start once the last one ends');
-select throws_ok($$ select tests.call(tests.uid(100), $q$select public.create_session('Clash', 1, 600, 'LIVE1')$q$) $$,
+select throws_ok($$ select tests.staff($q$select public.create_session('Clash', 1, 600, 'LIVE1')$q$) $$,
   'already_active', 'a live session blocks creating another, whatever the code');
 select tests.end_live();
-select throws_ok($$ select tests.call(tests.uid(100), $q$select public.create_session('Clash', 1, 600, 'LIVE1')$q$) $$,
+select throws_ok($$ select tests.staff($q$select public.create_session('Clash', 1, 600, 'LIVE1')$q$) $$,
   '23505', null, 'a code already in use is not reported as a live session');
 
 select * from finish();

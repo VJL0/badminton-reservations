@@ -1,22 +1,14 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { createSessionSchema, firstIssue, idSchema } from "../schemas";
 import type { FormState } from "./form-state";
-import { type ActionResult, callRpc, invalid } from "./rpc";
-
-export async function signOut() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect("/admin/login");
-}
+import { type ActionResult, callStaffOnlyRpc, invalid } from "./rpc";
 
 async function createSession(input: { name: string; courts: number; minutes: number; autoRequeue: boolean }): Promise<ActionResult> {
   const p = createSessionSchema.safeParse(input);
   if (!p.success) return { ok: false, error: firstIssue(p.error) };
-  const res = await callRpc("create_session", {
+  const res = await callStaffOnlyRpc("create_session", {
     p_name: p.data.name,
     p_court_count: p.data.courts,
     p_game_duration_seconds: p.data.minutes * 60,
@@ -29,7 +21,7 @@ async function createSession(input: { name: string; courts: number; minutes: num
 export async function endSession(sessionId: string): Promise<ActionResult> {
   const id = idSchema.safeParse(sessionId);
   if (!id.success) return invalid;
-  const res = await callRpc("end_session", { p_session_id: id.data });
+  const res = await callStaffOnlyRpc("end_session", { p_session_id: id.data });
   refresh();
   return res;
 }
@@ -37,7 +29,7 @@ export async function endSession(sessionId: string): Promise<ActionResult> {
 export async function deleteSession(sessionId: string): Promise<ActionResult> {
   const id = idSchema.safeParse(sessionId);
   if (!id.success) return invalid;
-  const res = await callRpc("delete_session", { p_session_id: id.data });
+  const res = await callStaffOnlyRpc("delete_session", { p_session_id: id.data });
   refresh();
   return res;
 }

@@ -7,12 +7,13 @@ import { QUEUE_ROW, type Snapshot } from "../types";
 type Props = {
   queue: Snapshot["queue"];
   me: Snapshot["me"];
+  isStaff: boolean;
   eta: (batch: number) => string | null;
   onRemove: (playerId: string) => void;
 };
 
 /** The queue in rows of four: each row is the next game. */
-export function Queue({ queue, me, eta, onRemove }: Props) {
+export function Queue({ queue, me, isStaff, eta, onRemove }: Props) {
   const batches = Array.from({ length: Math.ceil(queue.length / QUEUE_ROW) }, (_, b) => queue.slice(b * QUEUE_ROW, (b + 1) * QUEUE_ROW));
 
   return (
@@ -76,7 +77,7 @@ export function Queue({ queue, me, eta, onRemove }: Props) {
                       Court {q.court_number}
                     </span>
                   )}
-                  {q && me.role && !isMe && (
+                  {q && isStaff && !isMe && (
                     <Button
                       variant="ghost"
                       size="icon-sm"

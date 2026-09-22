@@ -133,7 +133,7 @@ function CourtRow({ court, only, busy, run }: { court: Snapshot["courts"][number
   );
 }
 
-/** Admin-only panel: game length, auto-start, auto re-queue, and the court list. */
+/** Staff-only panel: game length, auto-start, auto re-queue, and the court list. */
 export function SessionSettings({ snapshot, busy, run }: { snapshot: Snapshot; busy: boolean; run: Run }) {
   const { session, courts } = snapshot;
   const [open, setOpen] = useState(false);
@@ -251,7 +251,7 @@ function SettingsForm({ snapshot, busy, run }: { snapshot: Snapshot; busy: boole
         <Switch checked={autoStart} onCheckedChange={setAutoStart} />
         <span className="text-sm font-semibold">
           Auto-start games when a court fills
-          <span className="block text-xs font-normal text-ink-2">Off: someone on the court (or an officer) presses Start.</span>
+          <span className="block text-xs font-normal text-ink-2">Off: someone on the court (or staff) presses Start.</span>
         </span>
       </label>
       <label className="flex items-center gap-3">

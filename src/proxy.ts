@@ -11,7 +11,8 @@ export async function proxy(request: NextRequest) {
   requestHeaders.set("Content-Security-Policy", csp);
 
   const { pathname } = request.nextUrl;
-  const needsSession = pathname.startsWith("/play") || pathname.startsWith("/admin");
+  // Staff sign-in is a signed cookie, not Supabase Auth, so only /play needs the JWT refreshed.
+  const needsSession = pathname.startsWith("/play");
   const response = needsSession
     ? await updateSession(request, requestHeaders)
     : NextResponse.next({ request: { headers: requestHeaders } });
